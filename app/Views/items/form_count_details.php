@@ -148,9 +148,18 @@ use App\Models\Inventory;
                 td.setAttribute("style", "text-align: center");
                 tr.appendChild(td);
 
+                // nth - add feature to show the receipt & pos link
                 td = document.createElement('td');
-                td.appendChild(document.createTextNode(data['trans_comment']));
+                var comment = data['trans_comment'] || '';
+                var parts = comment.split(' ');
+                if ((parts[0] === 'POS' || parts[0] === 'RECV') && parts[1]) {
+                    var baseUrl = (parts[0] === 'POS') ? '<?= site_url('sales/receipt') ?>' : '<?= site_url('receivings/receipt') ?>';
+                    td.innerHTML = '<a href="' + baseUrl + '/' + parts[1] + '" target="_blank">' + comment + '</a>';
+                } else {
+                    td.textContent = comment;
+                }
                 tr.appendChild(td);
+                
 
                 table.appendChild(tr);
             }
