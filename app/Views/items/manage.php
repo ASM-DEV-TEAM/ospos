@@ -3,6 +3,7 @@
  * @var string $controller_name
  * @var string $table_headers
  * @var array $filters
+ * @var array $categories
  * @var array $stock_locations
  * @var int $stock_location
  * @var array $config
@@ -41,6 +42,10 @@ use App\Models\Employee;
             table_support.refresh();
         });
 
+        $("#category").change(function() {
+            table_support.refresh();
+        });
+
         <?php
         echo view('partial/bootstrap_tables_locale');
         $employee = model(Employee::class);
@@ -57,6 +62,7 @@ use App\Models\Employee;
                     "start_date": start_date,
                     "end_date": end_date,
                     "stock_location": $("#stock_location").val(),
+                    "category": $("#category").val(),
                     "filters": $("#filters").val()
                 });
             },
@@ -105,6 +111,18 @@ use App\Models\Employee;
             'data-style'                => 'btn-default btn-sm',
             'data-width'                => 'fit'
         ]) ?>
+        <?= form_dropdown(
+            'category',
+            $categories,
+            '',
+            [
+                'id'         => 'category',
+                'class'      => 'selectpicker show-menu-arrow',
+                'data-style' => 'btn-default btn-sm',
+                'data-width' => 'fit',
+                'title'      => lang('Items.category')
+            ]
+        ) ?>
         <?php
         if (count($stock_locations) > 1) {
             echo form_dropdown(

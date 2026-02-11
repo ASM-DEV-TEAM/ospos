@@ -42,9 +42,15 @@
             }
 
             var sale_type = Number(row.sale_type);
-            var href = sale_type === <?= SALE_TYPE_QUOTE ?>
-                ? "<?= site_url('sales/quote/'); ?>" + sale_id
-                : "<?= site_url('sales/receipt/'); ?>" + sale_id;
+            var href;
+
+            if (sale_type === <?= SALE_TYPE_QUOTE ?>) {
+                href = "<?= site_url('sales/quote/'); ?>" + sale_id;
+            } else if (sale_type === <?= SALE_TYPE_INVOICE ?>) {
+                href = "<?= site_url('sales/invoice/'); ?>" + sale_id;
+            } else {
+                href = "<?= site_url('sales/receipt/'); ?>" + sale_id;
+            }
 
             return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + sale_id + '</a>';
         };

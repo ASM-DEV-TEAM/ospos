@@ -110,6 +110,7 @@
     var enable_actions = function(callback) {
         return function() {
             var selection_empty = selected_rows().length == 0;
+            update_export_data_type();
             $("#toolbar button:not(.dropdown-toggle)").attr('disabled', selection_empty);
             typeof callback == 'function' && callback();
         }
@@ -117,6 +118,15 @@
 
     var table = function() {
         return $("#table").data('bootstrap.table');
+    }
+
+    var update_export_data_type = function() {
+        var bootstrap_table = table();
+        if (!bootstrap_table || !bootstrap_table.options) {
+            return;
+        }
+
+        bootstrap_table.options.exportDataType = selected_rows().length > 0 ? 'selected' : 'all';
     }
 
     var selected_ids = function () {
@@ -218,12 +228,13 @@
             sidePagination: 'server',
             selectItemName: 'btSelectItem',
             pageSize: options.pageSize,
+            pageList: [10, 25, 50, 100, 200],
             pagination: true,
             search: options.resource || false,
             showColumns: true,
             clickToSelect: true,
             showExport: true,
-            exportDataType: 'basic',
+            exportDataType: 'all',
             exportTypes: ['json', 'xml', 'csv', 'txt', 'sql', 'excel', 'pdf'],
             exportOptions: {
                 fileName: options.resource.replace(/.*\/(.*?)$/g, '$1') + "_" + export_suffix
@@ -373,3 +384,5 @@ function number_sorter(a, b) {
     b = +b.replace(/[^\-0-9]+/g, '');
     return a - b;
 }
+
+

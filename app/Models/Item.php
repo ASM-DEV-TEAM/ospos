@@ -244,6 +244,10 @@ class Item extends Model
             $builder->whereIn('items.item_type', $non_temp);
         }
 
+        if (!empty($filters['category'])) {
+            $builder->where('items.category', $filters['category']);
+        }
+
         // get_found_rows case
         if ($count_only) {
             return $builder->get()->getRow()->count;

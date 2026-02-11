@@ -84,6 +84,11 @@ class Items extends Secure_Controller
             'is_deleted'     => lang('Items.is_deleted'),
             'temporary'      => lang('Items.temp')
         ];
+        $data['categories'] = ['' => lang('Common.none_selected_text')];
+
+        foreach ($this->item->get_categories()->getResultArray() as $category) {
+            $data['categories'][$category['category']] = $category['category'];
+        }
 
         echo view('items/manage', $data);
     }
@@ -108,6 +113,7 @@ class Items extends Secure_Controller
             'start_date'        => $this->request->getGet('start_date'),
             'end_date'          => $this->request->getGet('end_date'),
             'stock_location_id' => $this->item_lib->get_item_location(),
+            'category'          => (string)($this->request->getGet('category') ?? ''),
             'empty_upc'         => false,
             'low_inventory'     => false,
             'is_serialized'     => false,
@@ -118,8 +124,14 @@ class Items extends Secure_Controller
             'definition_ids'    => array_keys($definition_names)
         ];
 
-        // Check if any filter is set in the multiselect dropdown
-        $request_filters = array_fill_keys($this->request->getGet('filters', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? [], true);
+        // Check if any filter is set in the multiselect dropdown.
+        // Only accept known boolean filters so keys like "category" cannot override base filters.
+        $selected_filters = $this->request->getGet('filters');
+        if (!is_array($selected_filters)) {
+            $selected_filters = $selected_filters === null ? [] : [$selected_filters];
+        }
+        $selected_filters = array_intersect(array_map('strval', $selected_filters), array_keys($filters));
+        $request_filters = array_fill_keys($selected_filters, true);
         $filters = array_merge($filters, $request_filters);
         $items = $this->item->search($search, $filters, $limit, $offset, $sort, $order);
         $total_rows = $this->item->get_found_rows($search, $filters);
