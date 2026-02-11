@@ -53,6 +53,25 @@
 #receipt_wrapper #barcode {
     margin-top: 10px;
     text-align: center;
+    font-size: 11px;
+}
+
+#receipt_wrapper #barcode svg,
+#receipt_wrapper #barcode img {
+    max-width: 150px;
+    height: auto;
+}
+
+#receipt_items th.col-qty,
+#receipt_items td.col-qty {
+    white-space: nowrap;
+    text-align: center;
+}
+
+#receipt_items th.col-total,
+#receipt_items td.col-total {
+    white-space: nowrap;
+    text-align: right;
 }
 
 .total-value {
@@ -61,4 +80,111 @@
 
 .discount {
     font-weight: bold;
+}
+
+@media print and (max-width: 90mm) {
+    @page {
+        margin: 0;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #receipt_wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 1.5mm;
+        box-sizing: border-box;
+    }
+
+    #receipt_header,
+    #receipt_general_info,
+    #sale_return_policy,
+    #barcode {
+        word-break: break-word;
+    }
+
+    #receipt_items {
+        width: 100%;
+        table-layout: auto;
+        margin-top: 2mm;
+        margin-bottom: 2mm;
+    }
+
+    #receipt_items th,
+    #receipt_items td {
+        padding: 1.1mm 0.8mm;
+        font-size: 10px;
+        line-height: 1.2;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    #receipt_items th.col-qty,
+    #receipt_items td.col-qty,
+    #receipt_items th.col-total,
+    #receipt_items td.col-total {
+        white-space: nowrap;
+    }
+
+    #sale_return_policy {
+        width: 100%;
+    }
+
+    #receipt_wrapper #barcode svg,
+    #receipt_wrapper #barcode img {
+        max-width: 110px;
+    }
+}
+
+@media print {
+    body.thermal-80mm #receipt_wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 1.5mm;
+        box-sizing: border-box;
+    }
+
+    body.thermal-80mm #receipt_header,
+    body.thermal-80mm #receipt_general_info,
+    body.thermal-80mm #sale_return_policy,
+    body.thermal-80mm #barcode {
+        word-break: break-word;
+    }
+
+    body.thermal-80mm #receipt_items {
+        width: 100%;
+        table-layout: auto;
+        margin-top: 2mm;
+        margin-bottom: 2mm;
+    }
+
+    body.thermal-80mm #receipt_items th,
+    body.thermal-80mm #receipt_items td {
+        padding: 1.1mm 0.8mm;
+        font-size: 10px;
+        line-height: 1.2;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    body.thermal-80mm #receipt_items th.col-qty,
+    body.thermal-80mm #receipt_items td.col-qty,
+    body.thermal-80mm #receipt_items th.col-total,
+    body.thermal-80mm #receipt_items td.col-total {
+        white-space: nowrap;
+    }
+
+    body.thermal-80mm #sale_return_policy {
+        width: 100%;
+    }
+
+    body.thermal-80mm #barcode svg,
+    body.thermal-80mm #barcode img {
+        max-width: 110px;
+    }
 }

@@ -81,7 +81,6 @@
                 <th><?= lang('Sales.item_name') ?></th>
                 <th><?= lang('Sales.quantity') ?></th>
                 <th><?= lang('Sales.price') ?></th>
-                <th><?= lang('Sales.discount') ?></th>
                 <th><?= lang('Sales.total') ?></th>
             </tr>
 
@@ -94,34 +93,49 @@
                         <td class="item-name"><?= esc($item['name']) ?></td>
                         <td><?= to_quantity_decimals($item['quantity']) ?></td>
                         <td><?= to_currency($item['price']) ?></td>
-                        <td><?= ($item['discount_type'] == FIXED) ? to_currency($item['discount']) : to_decimals($item['discount']) . '%' ?></td>
                         <td class="total-line"><?= to_currency($item['discounted_total']) ?></td>
                     </tr>
             <?php
                 }
             }
+
+            $subtotal_before_discount = 0.0;
+            foreach ($cart as $item) {
+                if ($item['print_option'] == PRINT_YES) {
+                    $subtotal_before_discount += isset($item['total'])
+                        ? (float)$item['total']
+                        : ((float)$item['price'] * (float)$item['quantity']);
+                }
+            }
+            $discount_total = $subtotal_before_discount - (float)$tax_exclusive_subtotal;
             ?>
 
             <tr>
-                <td colspan="6" align="center"><?= '&nbsp;' ?></td>
+                <td colspan="5" align="center"><?= '&nbsp;' ?></td>
             </tr>
 
             <tr>
-                <td colspan="3" class="blank"> </td>
+                <td colspan="2" class="blank"> </td>
                 <td colspan="2" class="total-line"><?= lang('Sales.sub_total') ?></td>
-                <td id="subtotal" class="total-value"><?= to_currency($tax_exclusive_subtotal) ?></td>
+                <td id="subtotal" class="total-value"><?= to_currency($subtotal_before_discount) ?></td>
+            </tr>
+
+            <tr>
+                <td colspan="2" class="blank"> </td>
+                <td colspan="2" class="total-line"><?= lang('Sales.discount') ?></td>
+                <td id="discount_total" class="total-value"><?= to_currency($discount_total * -1) ?></td>
             </tr>
 
             <?php foreach ($taxes as $name => $value) { ?>
                 <tr>
-                    <td colspan="3" class="blank"> </td>
+                    <td colspan="2" class="blank"> </td>
                     <td colspan="2" class="total-line"><?= esc($name) ?></td>
                     <td id="taxes" class="total-value"><?= to_currency_tax($value) ?></td>
                 </tr>
             <?php } ?>
 
             <tr>
-                <td colspan="3" class="blank"> </td>
+                <td colspan="2" class="blank"> </td>
                 <td colspan="2" class="total-line"><?= lang('Sales.total') ?></td>
                 <td id="total" class="total-value"><?= to_currency($total) ?></td>
             </tr>

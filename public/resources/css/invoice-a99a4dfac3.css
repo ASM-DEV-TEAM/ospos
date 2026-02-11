@@ -179,7 +179,46 @@
 }
 
 #items td.item-name {
-    width: 175px;
+    width: auto;
+}
+
+#items th.col-item-number,
+#items td.col-item-number {
+    width: 8%;
+    white-space: nowrap;
+}
+
+#items th.col-hsn,
+#items td.col-hsn {
+    width: 8%;
+    white-space: nowrap;
+}
+
+#items th.col-qty,
+#items td.col-qty {
+    width: 8%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#items th.col-price,
+#items td.col-price {
+    width: 11%;
+    white-space: nowrap;
+}
+
+#items th.col-disc,
+#items td.col-disc {
+    width: 9%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#items th.col-total,
+#items td.col-total {
+    width: 12%;
+    white-space: nowrap;
+    text-align: right;
 }
 
 #items td.item-description textarea {
@@ -244,6 +283,16 @@
     text-align: center;
 }
 
+#barcode {
+    font-size: 11px;
+}
+
+#barcode svg,
+#barcode img {
+    max-width: 160px;
+    height: auto;
+}
+
 .delete-wpr {
     position: relative;
 }
@@ -261,4 +310,243 @@
     left: -22px;
     font-family: Verdana;
     font-size: 12px;
+}
+
+@media print and (max-width: 90mm) {
+    @page {
+        margin: 0;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #page-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 1.5mm;
+        box-sizing: border-box;
+        font-size: 11px;
+    }
+
+    #header {
+        margin: 0 0 2mm 0;
+        font-size: 16px;
+        letter-spacing: 1px;
+        padding: 2mm 0;
+    }
+
+    #block1,
+    #block2 {
+        display: block;
+        overflow: visible;
+    }
+
+    #logo,
+    #customer-title,
+    #company-title,
+    #meta {
+        float: none !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 0 2mm 0 !important;
+        text-align: left;
+    }
+
+    #logo {
+        border: 0;
+        max-height: none;
+    }
+
+    #logo img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    #meta td,
+    #meta td.meta-head {
+        text-align: left;
+    }
+
+    #items {
+        width: 100%;
+        margin-top: 2mm;
+        table-layout: auto;
+    }
+
+    #items th,
+    #items td {
+        padding: 1.2mm 0.8mm;
+        font-size: 10px;
+        line-height: 1.2;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    #items th.col-item-number,
+    #items td.col-item-number {
+        display: none;
+    }
+
+    #items th.col-qty,
+    #items td.col-qty {
+        width: 9%;
+        white-space: nowrap;
+    }
+
+    #items th.col-price,
+    #items td.col-price {
+        width: 13%;
+        white-space: nowrap;
+    }
+
+    #items th.col-disc,
+    #items td.col-disc {
+        width: 11%;
+        white-space: nowrap;
+    }
+
+    #items th.col-total,
+    #items td.col-total {
+        width: 13%;
+        white-space: nowrap;
+    }
+
+    #items td.item-name,
+    #items td.description {
+        width: auto;
+    }
+
+    #terms {
+        margin-top: 3mm;
+    }
+
+    #terms h5 {
+        font-size: 10px;
+        letter-spacing: 2px;
+        padding: 0 0 1mm 0;
+        margin: 0 0 1mm 0;
+    }
+
+    #barcode svg,
+    #barcode img {
+        max-width: 120px;
+    }
+}
+
+@media print {
+    body.thermal-80mm #page-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 1.5mm;
+        box-sizing: border-box;
+        font-size: 11px;
+    }
+
+    body.thermal-80mm #header {
+        margin: 0 0 2mm 0;
+        font-size: 16px;
+        letter-spacing: 1px;
+        padding: 2mm 0;
+    }
+
+    body.thermal-80mm #block1,
+    body.thermal-80mm #block2 {
+        display: block;
+        overflow: visible;
+    }
+
+    body.thermal-80mm #logo,
+    body.thermal-80mm #customer-title,
+    body.thermal-80mm #company-title,
+    body.thermal-80mm #meta {
+        float: none !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 0 2mm 0 !important;
+        text-align: left;
+    }
+
+    body.thermal-80mm #logo {
+        border: 0;
+        max-height: none;
+    }
+
+    body.thermal-80mm #logo img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    body.thermal-80mm #meta td,
+    body.thermal-80mm #meta td.meta-head {
+        text-align: left;
+    }
+
+    body.thermal-80mm #items {
+        width: 100%;
+        margin-top: 2mm;
+        table-layout: auto;
+    }
+
+    body.thermal-80mm #items th,
+    body.thermal-80mm #items td {
+        padding: 1.2mm 0.8mm;
+        font-size: 10px;
+        line-height: 1.2;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    body.thermal-80mm #items th.col-item-number,
+    body.thermal-80mm #items td.col-item-number {
+        display: none;
+    }
+
+    body.thermal-80mm #items th.col-qty,
+    body.thermal-80mm #items td.col-qty {
+        width: 9%;
+        white-space: nowrap;
+    }
+
+    body.thermal-80mm #items th.col-price,
+    body.thermal-80mm #items td.col-price {
+        width: 13%;
+        white-space: nowrap;
+    }
+
+    body.thermal-80mm #items th.col-disc,
+    body.thermal-80mm #items td.col-disc {
+        width: 11%;
+        white-space: nowrap;
+    }
+
+    body.thermal-80mm #items th.col-total,
+    body.thermal-80mm #items td.col-total {
+        width: 13%;
+        white-space: nowrap;
+    }
+
+    body.thermal-80mm #items td.item-name,
+    body.thermal-80mm #items td.description {
+        width: auto;
+    }
+
+    body.thermal-80mm #terms {
+        margin-top: 3mm;
+    }
+
+    body.thermal-80mm #terms h5 {
+        font-size: 10px;
+        letter-spacing: 2px;
+        padding: 0 0 1mm 0;
+        margin: 0 0 1mm 0;
+    }
+
+    body.thermal-80mm #barcode svg,
+    body.thermal-80mm #barcode img {
+        max-width: 120px;
+    }
 }

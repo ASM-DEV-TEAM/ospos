@@ -113,55 +113,68 @@ if (isset($error_message)) {
 
     <table id="items">
         <tr>
-            <th><?= lang('Sales.item_number') ?></th>
-            <th><?= lang('Sales.item_name') ?></th>
-            <th><?= lang('Sales.quantity') ?></th>
-            <th><?= lang('Sales.price') ?></th>
-            <th><?= lang('Sales.discount') ?></th>
-            <th><?= lang('Sales.total') ?></th>
+            <th class="col-item-number"><?= lang('Sales.item_number') ?></th>
+            <th class="col-item-name"><?= lang('Sales.item_name') ?></th>
+            <th class="col-qty"><?= lang('Sales.quantity') ?></th>
+            <th class="col-price"><?= lang('Sales.price') ?></th>
+            <th class="col-total"><?= lang('Sales.total') ?></th>
         </tr>
         <?php
         foreach ($cart as $line => $item) {
             if ($item['print_option'] == PRINT_YES) {
         ?>
                 <tr class="item-row">
-                    <td><?= esc($item['item_number']) ?></td>
+                    <td class="col-item-number"><?= esc($item['item_number']) ?></td>
                     <td class="item-name"><?= esc($item['name']) ?></td>
-                    <td style="text-align: center;"><?= to_quantity_decimals($item['quantity']) ?></td>
-                    <td><?php if ($print_price_info) echo to_currency($item['price']) ?></td>
-                    <td style="text-align: center;"><?= ($item['discount_type'] == FIXED) ? to_currency($item['discount']) : to_decimals($item['discount']) . '%' ?></td>
-                    <td style="border-right: solid 1px; text-align: right;"><?php if ($print_price_info) echo to_currency($item['discounted_total']) ?></td>
+                    <td class="col-qty" style="text-align: center;"><?= to_quantity_decimals($item['quantity']) ?></td>
+                    <td class="col-price"><?php if ($print_price_info) echo to_currency($item['price']) ?></td>
+                    <td class="col-total" style="border-right: solid 1px; text-align: right;"><?php if ($print_price_info) echo to_currency($item['discounted_total']) ?></td>
                 </tr>
 
                 <?php if ($item['is_serialized'] || $item['allow_alt_description'] && !empty($item['description'])) { ?>
                     <tr class="item-row">
-                        <td></td>
-                        <td class="item-name" colspan="4"><?= esc($item['description']) ?></td>
+                        <td class="col-item-number"></td>
+                        <td class="item-name" colspan="3"><?= esc($item['description']) ?></td>
                         <td style="text-align: center;"><?= esc($item['serialnumber']) ?></td>
                     </tr>
         <?php
                 }
             }
         }
+
+        $subtotal_before_discount = 0.0;
+        foreach ($cart as $item) {
+            if ($item['print_option'] == PRINT_YES) {
+                $subtotal_before_discount += isset($item['total'])
+                    ? (float)$item['total']
+                    : ((float)$item['price'] * (float)$item['quantity']);
+            }
+        }
+        $discount_total = $subtotal_before_discount - (float)$subtotal;
         ?>
         <tr>
-            <td class="blank" colspan="6" style="text-align: center;"><?= '&nbsp;' //TODO: Why is PHP needed for an HTML `&nbsp;`? ?></td>
+            <td class="blank" colspan="5" style="text-align: center;"><?= '&nbsp;' //TODO: Why is PHP needed for an HTML `&nbsp;`? ?></td>
         </tr>
         <?php if ($print_price_info) { ?>
             <tr>
-                <td colspan="3" class="blank-bottom"> </td>
+                <td colspan="2" class="blank-bottom"> </td>
                 <td colspan="2" class="total-line"><?= lang('Sales.sub_total') ?></td>
-                <td class="total-value" id="subtotal"><?= to_currency($subtotal) ?></td>
+                <td class="total-value" id="subtotal"><?= to_currency($subtotal_before_discount) ?></td>
+            </tr>
+            <tr>
+                <td colspan="2" class="blank"> </td>
+                <td colspan="2" class="total-line"><?= lang('Sales.discount') ?></td>
+                <td class="total-value" id="discount_total"><?= to_currency($discount_total * -1) ?></td>
             </tr>
             <?php foreach ($taxes as $tax_group_index => $tax) { ?>
                 <tr>
-                    <td colspan="3" class="blank"> </td>
+                    <td colspan="2" class="blank"> </td>
                     <td colspan="2" class="total-line"><?= (float)$tax['tax_rate'] . '% ' . $tax['tax_group'] ?></td>
                     <td class="total-value" id="taxes"><?= to_currency_tax($tax['sale_tax_amount']) ?></td>
                 </tr>
             <?php } ?>
             <tr>
-                <td colspan="3" class="blank"> </td>
+                <td colspan="2" class="blank"> </td>
                 <td colspan="2" class="total-line"><?= lang('Sales.total') ?></td>
                 <td class="total-value" id="total"><?= to_currency($total) ?></td>
             </tr>
@@ -175,7 +188,7 @@ if (isset($error_message)) {
             $show_giftcard_remainder |= $splitpayment[0] == lang('Sales.giftcard');
         ?>
             <tr>
-                <td colspan="3" class="blank"> </td>
+                <td colspan="2" class="blank"> </td>
                 <td colspan="2" class="total-line"><?= $splitpayment[0] ?></td>
                 <td class="total-value" id="paid"><?= to_currency($payment['payment_amount']) ?></td>
             </tr>

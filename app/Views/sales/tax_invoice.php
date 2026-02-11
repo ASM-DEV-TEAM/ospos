@@ -113,25 +113,18 @@ if (isset($error_message)) {
 
     <table id="items">
         <tr>
-            <th><?= lang('Sales.item_number') ?></th>
+            <th class="col-item-number"><?= lang('Sales.item_number') ?></th>
             <?php
-            $invoice_columns = 6;
+            $invoice_columns = 5;
             if ($include_hsn) {
                 $invoice_columns += 1;    // TODO: $invoice_columns++; ?
             ?>
-                <th><?= lang('Sales.hsn') ?></th>
+                <th class="col-hsn"><?= lang('Sales.hsn') ?></th>
             <?php } ?>
-            <th><?= lang('Sales.item_name') ?></th>
-            <th><?= lang('Sales.quantity') ?></th>
-            <th><?= lang('Sales.price') ?></th>
-            <th><?= lang('Sales.discount') ?></th>
-            <?php
-            if ($discount > 0) {
-                $invoice_columns += 1;    // TODO: $invoice_columns++; ?
-            ?>
-                <th><?= lang('Sales.customer_discount') ?></th>
-            <?php } ?>
-            <th><?= lang('Sales.total') ?></th>
+            <th class="col-item-name"><?= lang('Sales.item_name') ?></th>
+            <th class="col-qty"><?= lang('Sales.quantity') ?></th>
+            <th class="col-price"><?= lang('Sales.price') ?></th>
+            <th class="col-total"><?= lang('Sales.total') ?></th>
         </tr>
 
         <?php
@@ -139,18 +132,14 @@ if (isset($error_message)) {
             if ($item['print_option'] == PRINT_YES) {    // TODO: === ?
         ?>
                 <tr class="item-row">
-                    <td><?= $item['item_number'] ?></td>
+                    <td class="col-item-number"><?= $item['item_number'] ?></td>
                     <?php if ($include_hsn): ?>
-                        <td style="text-align: center;"><?= esc($item['hsn_code']) ?></td>
+                        <td class="col-hsn" style="text-align: center;"><?= esc($item['hsn_code']) ?></td>
                     <?php endif; ?>
                     <td class="item-name"><?= esc($item['name']) ?></td>
-                    <td style="text-align: center;"><?= to_quantity_decimals($item['quantity']) ?></td>
-                    <td><?= to_currency($item['price']) ?></td>
-                    <td style="text-align: center;"><?= ($item['discount_type'] == FIXED) ? to_currency($item['discount']) : to_decimals($item['discount']) . '%' ?></td>
-                    <?php if ($discount > 0): ?>
-                        <td style="text-align: center;"><?= to_currency($item['discounted_total'] / $item['quantity']) ?></td>
-                    <?php endif; ?>
-                    <td style="border-right: solid 1px; text-align: right;"><?= to_currency($item['discounted_total']) ?></td>
+                    <td class="col-qty" style="text-align: center;"><?= to_quantity_decimals($item['quantity']) ?></td>
+                    <td class="col-price"><?= to_currency($item['price']) ?></td>
+                    <td class="col-total" style="border-right: solid 1px; text-align: right;"><?= to_currency($item['discounted_total']) ?></td>
                 </tr>
                 <?php if ($item['is_serialized'] || $item['allow_alt_description'] && !empty($item['description'])) { ?>
                     <tr class="item-row">
@@ -164,6 +153,16 @@ if (isset($error_message)) {
                 }
             }
         }
+
+        $subtotal_before_discount = 0.0;
+        foreach ($cart as $item) {
+            if ($item['print_option'] == PRINT_YES) {
+                $subtotal_before_discount += isset($item['total'])
+                    ? (float)$item['total']
+                    : ((float)$item['price'] * (float)$item['quantity']);
+            }
+        }
+        $discount_total = $subtotal_before_discount - (float)$subtotal;
         ?>
 
         <tr>
@@ -173,7 +172,13 @@ if (isset($error_message)) {
         <tr>
             <td colspan="<?= $invoice_columns - 3 ?>" class="blank-bottom"> </td>
             <td colspan="2" class="total-line"><?= lang('Sales.sub_total') ?></td>
-            <td class="total-value" id="subtotal"><?= to_currency($subtotal) ?></td>
+            <td class="total-value" id="subtotal"><?= to_currency($subtotal_before_discount) ?></td>
+        </tr>
+
+        <tr>
+            <td colspan="<?= $invoice_columns - 3 ?>" class="blank"> </td>
+            <td colspan="2" class="total-line"><?= lang('Sales.discount') ?></td>
+            <td class="total-value" id="discount_total"><?= to_currency($discount_total * -1) ?></td>
         </tr>
 
         <?php foreach ($taxes as $tax_group_index => $tax) { ?>

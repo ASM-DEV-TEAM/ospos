@@ -51,12 +51,12 @@
 
     <table id="receipt_items">
         <tr>
-            <th style="width: 40%;"><?= lang('Sales.description_abbrv') ?></th>
-            <th style="width: 20%;"><?= lang('Sales.price') ?></th>
-            <th style="width: 20%;"><?= lang('Sales.quantity') ?></th>
-            <th style="width: 20%;" class="total-value"><?= lang('Sales.total') ?></th>
+            <th style="width: 52%;"><?= lang('Sales.description_abbrv') ?></th>
+            <th style="width: 16%;"><?= lang('Sales.price') ?></th>
+            <th style="width: 12%;" class="col-qty"><?= lang('Sales.quantity') ?></th>
+            <th style="width: 14%;" class="total-value col-total"><?= lang('Sales.total') ?></th>
             <?php if ($config['receipt_show_tax_ind']) { ?>
-                <th style="width: 20%;"></th>
+                <th style="width: 6%;"></th>
             <?php } ?>
         </tr>
         <?php
@@ -66,8 +66,8 @@
                 <tr>
                     <td><?= esc(ucfirst($item['name'] . ' ' . $item['attribute_values'])) ?></td>
                     <td><?= to_currency($item['price']) ?></td>
-                    <td><?= to_quantity_decimals($item['quantity']) ?></td>
-                    <td class="total-value"><?= to_currency($item[($config['receipt_show_total_discount'] ? 'total' : 'discounted_total')]) ?></td>
+                    <td class="col-qty"><?= to_quantity_decimals($item['quantity']) ?></td>
+                    <td class="total-value col-total"><?= to_currency($item[($config['receipt_show_total_discount'] ? 'total' : 'discounted_total')]) ?></td>
                     <?php if ($config['receipt_show_tax_ind']) { ?>
                         <td><?= $item['taxed_flag'] ?></td>
                     <?php } ?>
@@ -94,24 +94,32 @@
                 }
             }
         }
+
+        $subtotal_before_discount = isset($prediscount_subtotal)
+            ? (float)$prediscount_subtotal
+            : 0.0;
+        if ($subtotal_before_discount == 0.0) {
+            foreach ($cart as $item) {
+                if ($item['print_option'] == PRINT_YES) {
+                    $subtotal_before_discount += isset($item['total'])
+                        ? (float)$item['total']
+                        : ((float)$item['price'] * (float)$item['quantity']);
+                }
+            }
+        }
+        $discount_total = $subtotal_before_discount - (float)$subtotal;
         ?>
 
-        <?php if ($config['receipt_show_total_discount'] && $discount > 0) { ?>
-            <tr>
-                <td colspan="3" style="text-align: right; border-top: 2px solid #000000;"><?= lang('Sales.sub_total') ?></td>
-                <td style="text-align: right; border-top:2px solid #000000;"><?= to_currency($prediscount_subtotal) ?></td>
-            </tr>
-            <tr>
-                <td colspan="3" class="total-value"><?= lang('Sales.customer_discount') ?>:</td>
-                <td class="total-value"><?= to_currency($discount * -1) ?></td>
-            </tr>
-        <?php } ?>
+        <tr>
+            <td colspan="3" style="text-align: right; border-top: 2px solid #000000;"><?= lang('Sales.sub_total') ?></td>
+            <td style="text-align: right; border-top:2px solid #000000;"><?= to_currency($subtotal_before_discount) ?></td>
+        </tr>
+        <tr>
+            <td colspan="3" class="total-value"><?= lang('Sales.discount') ?>:</td>
+            <td class="total-value"><?= to_currency($discount_total * -1) ?></td>
+        </tr>
 
         <?php if ($config['receipt_show_taxes']) { ?>
-            <tr>
-                <td colspan="3" style="text-align: right; border-top: 2px solid #000000;"><?= lang('Sales.sub_total') ?></td>
-                <td style="text-align: right; border-top: 2px solid #000000;"><?= to_currency($subtotal) ?></td>
-            </tr>
             <?php foreach ($taxes as $tax_group_index => $tax) { ?>
                 <tr>
                     <td colspan="3" class="total-value"><?= (float)$tax['tax_rate'] . '% ' . $tax['tax_group'] ?>:</td>
@@ -124,10 +132,9 @@
 
         <tr></tr>
 
-        <?php $border = (!$config['receipt_show_taxes'] && !($config['receipt_show_total_discount'] && $discount > 0)); ?>
         <tr>
-            <td colspan="3" style="text-align: right;<?= $border ? ' border-top: 2px solid black;' : '' ?>"><?= lang('Sales.total') ?></td>
-            <td style="text-align: right;<?= $border ? ' border-top: 2px solid black;' : '' ?>"><?= to_currency($total) ?></td>
+            <td colspan="3" style="text-align: right;"><?= lang('Sales.total') ?></td>
+            <td style="text-align: right;"><?= to_currency($total) ?></td>
         </tr>
 
         <tr>

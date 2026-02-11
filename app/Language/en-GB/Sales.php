@@ -146,7 +146,7 @@ return [
     "payments_total"                   => "Payments Total",
     "price"                            => "Price",
     "print_after_sale"                 => "Print after Sale",
-    "quantity"                         => "Qty",
+    "quantity"                         => "qty",
     "quantity_less_than_reorder_level" => "Warning: Desired Quantity is below Reorder Level for that Item.",
     "quantity_less_than_zero"          => "Warning: Desired Quantity is out of stock, audit your inventory.",
     "quantity_of_items"                => "Quantity of {0} Items",
