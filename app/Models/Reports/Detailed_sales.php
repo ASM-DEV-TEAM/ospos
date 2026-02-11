@@ -97,6 +97,7 @@ class Detailed_sales extends Report
     {
         $builder = $this->db->table('sales_items_temp');
         $builder->select('sale_id,
+            MAX(sale_type) AS sale_type,
             MAX(CASE
             WHEN sale_type = ' . SALE_TYPE_POS . ' && sale_status = ' . COMPLETED . ' THEN \'' . lang('Reports.code_pos') . '\'
             WHEN sale_type = ' . SALE_TYPE_INVOICE . ' && sale_status = ' . COMPLETED . ' THEN \'' . lang('Reports.code_invoice') . '\'

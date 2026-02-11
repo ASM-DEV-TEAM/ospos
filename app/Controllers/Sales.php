@@ -1231,6 +1231,22 @@ class Sales extends Secure_Controller
         $this->sale_lib->clear_all();
     }
 
+    
+    /**
+     * Load the quote for a sale. Used in app/Views/sales/form.php
+     * @param int $sale_id
+     * @return void
+     * @noinspection PhpUnused
+     */
+     public function getQuote(int $sale_id): void
+    {
+        //nootoHEROF
+        $data = $this->_load_sale_data($sale_id);
+        echo view('sales/quote', $data);
+        $this->sale_lib->clear_all();
+    }
+
+
     /**
      * @param int $sale_id
      * @return void

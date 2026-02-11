@@ -34,6 +34,31 @@
         <?php if ($config['customer_reward_enable'] && !empty($details_data_rewards)) { ?>
             var details_data_rewards = <?= json_encode(esc($details_data_rewards)) ?>;
         <?php } ?>
+        var summary_columns = <?= transform_headers(esc($headers['summary']), true) ?>;
+        var trans_id_formatter = function(value, row) {
+            var sale_id = String(value || '');
+            if (!/^\d+$/.test(sale_id)) {
+                return sale_id;
+            }
+
+            var sale_type = Number(row.sale_type);
+            var href = sale_type === <?= SALE_TYPE_QUOTE ?>
+                ? "<?= site_url('sales/quote/'); ?>" + sale_id
+                : "<?= site_url('sales/receipt/'); ?>" + sale_id;
+
+            return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + sale_id + '</a>';
+        };
+
+        <?php if (isset($editable) && $editable === 'sales') { ?>
+            summary_columns = summary_columns.map(function(column) {
+                if (column.field === 'id') {
+                    column.escape = false;
+                    column.formatter = trans_id_formatter;
+                }
+                return column;
+            });
+        <?php } ?>
+
         var init_dialog = function() {
             <?php if (isset($editable)) { ?>
                 table_support.submit_handler('<?= esc(site_url("reports/get_detailed_$editable" . '_row')) ?>');
@@ -45,7 +70,7 @@
             .addClass("table-striped")
             .addClass("table-bordered")
             .bootstrapTable({
-                columns: <?= transform_headers(esc($headers['summary']), true) ?>,
+                columns: summary_columns,
                 stickyHeader: true,
                 pageSize: <?= $config['lines_per_page'] ?>,
                 pagination: true,

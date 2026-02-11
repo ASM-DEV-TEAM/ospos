@@ -1805,6 +1805,7 @@ class Reports extends Secure_Controller
 
             $summary_data[] = [
                 'id'            => $row['sale_id'],
+                'sale_type'     => $row['sale_type'],
                 'type_code'     => $row['type_code'],
                 'sale_time'     => to_datetime(strtotime($row['sale_time'])),
                 'quantity'      => to_quantity_decimals($row['items_purchased']),
