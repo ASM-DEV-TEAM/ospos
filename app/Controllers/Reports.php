@@ -2004,7 +2004,7 @@ class Reports extends Secure_Controller
     {
         $this->clearCache();
 
-        $inputs = [];
+        $inputs = ['person_id' => $this->employee->get_logged_in_employee_info()->person_id];
 
         $inventory_low = model(Inventory_low::class);
 
@@ -2061,7 +2061,11 @@ class Reports extends Secure_Controller
     {
         $this->clearCache();
 
-        $inputs = ['location_id' => $location_id, 'item_count' => $item_count];
+        $inputs = [
+            'location_id' => $location_id,
+            'item_count'  => $item_count,
+            'person_id'   => $this->employee->get_logged_in_employee_info()->person_id
+        ];
 
         $report_data = $this->inventory_summary->getData($inputs);
 

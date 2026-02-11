@@ -31,23 +31,27 @@ class Inventory_low extends Report
      * @return array
      */
     public function getData(array $inputs): array
-    {    // TODO: convert to using QueryBuilder. Use App/Models/Reports/Summary_taxes.php getData() as a reference template
+    {
         $item = model(Item::class);
-        $query = $this->db->query("SELECT " . $item->get_item_name('name') . ",
+
+        $builder = $this->db->table('items AS items');
+        $builder->select(
+            $item->get_item_name('name') . ',
             items.item_number,
             item_quantities.quantity,
             items.reorder_level,
-            stock_locations.location_name
-            FROM " . $this->db->prefixTable('items') . " AS items
-            JOIN " . $this->db->prefixTable('item_quantities') . " AS item_quantities ON items.item_id = item_quantities.item_id
-            JOIN " . $this->db->prefixTable('stock_locations') . " AS stock_locations ON item_quantities.location_id = stock_locations.location_id
-            WHERE items.deleted = 0
-            AND items.stock_type = 0
-            AND item_quantities.quantity <= items.reorder_level
-            AND stock_locations.deleted = 0
-            ORDER BY items.name");
+            stock_locations.location_name'
+        , false);
+        $builder->join('item_quantities AS item_quantities', 'items.item_id = item_quantities.item_id');
+        $builder->join('stock_locations AS stock_locations', 'item_quantities.location_id = stock_locations.location_id');
+        $builder->where('items.deleted = 0', null, false);
+        $builder->where('items.stock_type = 0', null, false);
+        $builder->where('item_quantities.quantity <= items.reorder_level', null, false);
+        $builder->where('stock_locations.deleted = 0', null, false);
+        $item->apply_item_supplier_scope_restriction($builder, isset($inputs['person_id']) ? (int)$inputs['person_id'] : null, 'items');
+        $builder->orderBy('items.name', '', false);
 
-        return $query->getResultArray() ?: [];
+        return $builder->get()->getResultArray();
     }
 
     /**

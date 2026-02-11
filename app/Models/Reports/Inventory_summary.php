@@ -51,12 +51,13 @@ class Inventory_summary extends Report
             items.cost_price,
             items.unit_price,
             (items.cost_price * item_quantities.quantity) AS sub_total_value'
-        );
+        , false);
         $builder->join('item_quantities AS item_quantities', 'items.item_id = item_quantities.item_id');
         $builder->join('stock_locations AS stock_locations', 'item_quantities.location_id = stock_locations.location_id');
-        $builder->where('items.deleted', 0);
-        $builder->where('items.stock_type', 0);
-        $builder->where('stock_locations.deleted', 0);
+        $builder->where('items.deleted = 0', null, false);
+        $builder->where('items.stock_type = 0', null, false);
+        $builder->where('stock_locations.deleted = 0', null, false);
+        $item->apply_item_supplier_scope_restriction($builder, isset($inputs['person_id']) ? (int)$inputs['person_id'] : null, 'items');
 
         // Should be corresponding to the values Inventory_summary::getItemCountDropdownArray() returns
         if ($inputs['item_count'] == 'zero_and_less') {
@@ -66,11 +67,11 @@ class Inventory_summary extends Report
         }
 
         if ($inputs['location_id'] != 'all') {
-            $builder->where('stock_locations.location_id', $inputs['location_id']);
+            $builder->where('stock_locations.location_id = ' . (int)$inputs['location_id'], null, false);
         }
 
-        $builder->orderBy('items.name');
-        $builder->orderBy('items.qty_per_pack');
+        $builder->orderBy('items.name', '', false);
+        $builder->orderBy('items.qty_per_pack', '', false);
 
         return $builder->get()->getResultArray();
     }

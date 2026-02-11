@@ -104,6 +104,7 @@ class Items extends Secure_Controller
         $offset = $this->request->getGet('offset', FILTER_SANITIZE_NUMBER_INT);
         $sort = $this->sanitizeSortColumn(item_headers(), $this->request->getGet('sort', FILTER_SANITIZE_FULL_SPECIAL_CHARS), 'item_id');
         $order = $this->request->getGet('order', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $person_id = $this->employee->get_logged_in_employee_info()->person_id;
 
         $this->item_lib->set_item_location($this->request->getGet('stock_location'));
 
@@ -121,7 +122,8 @@ class Items extends Secure_Controller
             'search_custom'     => false,
             'is_deleted'        => false,
             'temporary'         => false,
-            'definition_ids'    => array_keys($definition_names)
+            'definition_ids'    => array_keys($definition_names),
+            'person_id'         => $person_id
         ];
 
         // Check if any filter is set in the multiselect dropdown.
@@ -185,9 +187,11 @@ class Items extends Secure_Controller
      */
     public function suggest_search(): void
     {
+        $person_id = $this->employee->get_logged_in_employee_info()->person_id;
         $options = [
             'search_custom' => $this->request->getPost('search_custom'),
-            'is_deleted'    => $this->request->getPost('is_deleted') !== null
+            'is_deleted'    => $this->request->getPost('is_deleted') !== null,
+            'person_id'     => $person_id
         ];
 
         $search = $this->request->getPost('term');
@@ -203,8 +207,9 @@ class Items extends Secure_Controller
      */
     public function getSuggest(): void
     {
+        $person_id = $this->employee->get_logged_in_employee_info()->person_id;
         $search = $this->request->getGet('term');
-        $suggestions = $this->item->get_search_suggestions($search, ['search_custom' => false, 'is_deleted' => false], true);
+        $suggestions = $this->item->get_search_suggestions($search, ['search_custom' => false, 'is_deleted' => false, 'person_id' => $person_id], true);
 
         echo json_encode($suggestions);
     }
@@ -226,7 +231,8 @@ class Items extends Secure_Controller
      */
     public function getSuggestKits(): void
     {
-        $suggestions = $this->item->get_kit_search_suggestions($this->request->getGet('term'), ['search_custom' => false, 'is_deleted' => false], true);
+        $person_id = $this->employee->get_logged_in_employee_info()->person_id;
+        $suggestions = $this->item->get_kit_search_suggestions($this->request->getGet('term'), ['search_custom' => false, 'is_deleted' => false, 'person_id' => $person_id], true);
 
         echo json_encode($suggestions);
     }

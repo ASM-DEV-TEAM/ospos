@@ -162,6 +162,29 @@ class Item_kits extends Secure_Controller
      */
     public function postSave(int $item_kit_id = NEW_ENTRY): void
     {
+        $person_id = $this->employee->get_logged_in_employee_info()->person_id;
+        $kit_item_id = (int)($this->request->getPost('kit_item_id') ?? 0);
+        if ($kit_item_id > 0 && !$this->item->is_item_accessible($kit_item_id, $person_id)) {
+            echo json_encode([
+                'success' => false,
+                'message' => lang('Error.no_permission_module') . ' items'
+            ]);
+            return;
+        }
+
+        $item_kit_items_array = $this->request->getPost('item_kit_qty') === null ? null : $this->request->getPost('item_kit_qty');
+        if ($item_kit_items_array !== null) {
+            foreach (array_keys($item_kit_items_array) as $item_id) {
+                if (!$this->item->is_item_accessible((int)$item_id, $person_id)) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => lang('Error.no_permission_module') . ' items'
+                    ]);
+                    return;
+                }
+            }
+        }
+
         $item_kit_data = [
             'name'              => $this->request->getPost('name'),
             'item_kit_number'   => $this->request->getPost('item_kit_number'),
@@ -180,8 +203,6 @@ class Item_kits extends Secure_Controller
                 $item_kit_id = $item_kit_data['item_kit_id'];
                 $new_item = true;
             }
-
-            $item_kit_items_array = $this->request->getPost('item_kit_qty') === null ? null : $this->request->getPost('item_kit_qty');
 
             if ($item_kit_items_array != null) {
                 $item_kit_items = [];

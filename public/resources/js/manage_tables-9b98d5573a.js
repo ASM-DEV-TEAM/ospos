@@ -1,9 +1,29 @@
 (function(dialog_support, $) {
 
-    var btn_id, dialog_ref;
+    var btn_id, dialog_ref, last_trigger_element;
+
+    var move_focus_out_of_dialog = function(dlog_ref) {
+        var active = document.activeElement;
+        if (!active) {
+            return;
+        }
+
+        var $modal = dlog_ref && dlog_ref.$modal ? dlog_ref.$modal : $('.modal.in:visible').last();
+        if ($modal && $modal.length && $modal.has(active).length) {
+            $(active).trigger('blur');
+            if (last_trigger_element && document.contains(last_trigger_element)) {
+                last_trigger_element.focus();
+            } else {
+                document.body.focus();
+            }
+        }
+    };
 
     var hide = function() {
-        dialog_ref && dialog_ref.close();
+        if (dialog_ref) {
+            move_focus_out_of_dialog(dialog_ref);
+            dialog_ref.close();
+        }
     };
 
     var clicked_id = function() {
@@ -80,6 +100,7 @@
             return $(selector).off('click').on('click', function(event) {
                 var $link = $(event.target);
                 $link = !$link.is("a, button") ? $link.parents("a, button") : $link ;
+                last_trigger_element = $link.get(0);
                 BootstrapDialog.show($.extend({
                     title: $link.attr('title'),
                     message: (function() {
@@ -88,7 +109,15 @@
                             node.html(data);
                         });
                         return node;
-                    })
+                    }),
+                    onhide: function(dlog_ref) {
+                        move_focus_out_of_dialog(dlog_ref);
+                    },
+                    onhidden: function() {
+                        if (last_trigger_element && document.contains(last_trigger_element)) {
+                            last_trigger_element.focus();
+                        }
+                    }
                 }, buttons.call(this, event)));
 
                 return false;

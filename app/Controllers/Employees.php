@@ -2,7 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Models\Item;
 use App\Models\Module;
+use App\Models\Supplier;
 use Config\Services;
 
 /**
@@ -13,11 +15,14 @@ use Config\Services;
  */
 class Employees extends Persons
 {
+    private Supplier $supplier;
+
     public function __construct()
     {
         parent::__construct('employees');
 
         $this->module = model('Module');
+        $this->supplier = model(Supplier::class);
     }
 
     /**
@@ -73,6 +78,9 @@ class Employees extends Persons
      */
     public function getView(int $employee_id = NEW_ENTRY): void
     {
+        $item = model(Item::class);
+        $item->ensure_item_supplier_scope_permissions_exist();
+
         $person_info = $this->employee->get_info($employee_id);
         foreach (get_object_vars($person_info) as $property => $value) {
             $person_info->$property = $value;
@@ -90,9 +98,22 @@ class Employees extends Persons
         $data['all_modules'] = $modules;
 
         $permissions = [];
+        $supplier_names = [];
+        foreach ($this->supplier->get_all()->getResultArray() as $supplier) {
+            $supplier_names[(int)$supplier['person_id']] = $supplier['company_name'];
+        }
         foreach ($this->module->get_all_subpermissions()->getResult() as $permission) {    // TODO: subpermissions does not follow naming standards.
+            if (preg_match('/^items_company_.*_only$/', $permission->permission_id) === 1) {
+                continue;
+            }
+
             $permission->permission_id = str_replace(' ', '_', $permission->permission_id);
             $permission->grant = $this->employee->has_grant($permission->permission_id, $person_info->person_id);
+            if (preg_match('/^items_scope_supplier_(\d+)$/', $permission->permission_id, $matches) === 1) {
+                $supplier_id = (int)$matches[1];
+                $supplier_name = $supplier_names[$supplier_id] ?? ('#' . $supplier_id);
+                $permission->permission_label = 'Items Access: ' . $supplier_name;
+            }
 
             $permissions[] = $permission;
         }

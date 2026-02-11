@@ -131,18 +131,23 @@
                             <span class="small"><?= lang("Module.$module->module_id" . '_desc') ?></span>
                             <?php
                             foreach ($all_subpermissions as $permission) {
-                                $exploded_permission = explode('_', $permission->permission_id, 2);
                                 if ($permission->module_id == $module->module_id) {
-                                    $lang_key = $module->module_id . '.' . $exploded_permission[1];
-                                    $lang_line = lang(ucfirst($lang_key));
-                                    $lang_line = (lang(ucfirst($lang_key)) == $lang_line) ? ucwords(str_replace("_", " ", $exploded_permission[1])) : $lang_line;
+                                    if (isset($permission->permission_label)) {
+                                        $lang_line = $permission->permission_label;
+                                    } else {
+                                        $exploded_permission = explode('_', $permission->permission_id, 2);
+                                        $lang_key = $module->module_id . '.' . $exploded_permission[1];
+                                        $lang_line = lang(ucfirst($lang_key));
+                                        $lang_line = (lang(ucfirst($lang_key)) == $lang_line) ? ucwords(str_replace("_", " ", $exploded_permission[1])) : $lang_line;
+                                    }
+
                                     if (!empty($lang_line)) {
                             ?>
                                         <ul>
                                             <li>
                                                 <?= form_checkbox("grant_$permission->permission_id", $permission->permission_id, $permission->grant == 1) ?>
                                                 <?= form_hidden("menu_group_$permission->permission_id", "--") ?>
-                                                <span class="medium"><?= $lang_line ?></span>
+                                                <span class="medium"><?= esc($lang_line) ?></span>
                                             </li>
                                         </ul>
                             <?php

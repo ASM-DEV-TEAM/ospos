@@ -13,6 +13,8 @@ use CodeIgniter\Session\Session;
  */
 class Employee extends Person
 {
+    private const ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX = 'items_scope_supplier_';
+
     public Session $session;
     protected $table = 'Employees';
     protected $primaryKey = 'person_id';
@@ -492,6 +494,57 @@ class Employee extends Person
         $builder->where('person_id', $person_id);
 
         return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Returns allowed supplier ids for item access.
+     * If empty, employee can access all suppliers.
+     */
+    public function get_allowed_item_supplier_ids(?int $person_id): array
+    {
+        if ($person_id === null) {
+            return [];
+        }
+
+        $builder = $this->db->table('grants');
+        $builder->select('permission_id');
+        $builder->where('person_id', $person_id);
+        $builder->like('permission_id', self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX, 'after');
+
+        $supplier_ids = [];
+        foreach ($builder->get()->getResultArray() as $grant) {
+            $supplier_id = $this->decode_item_scope_supplier_permission_id($grant['permission_id']);
+            if ($supplier_id !== null) {
+                $supplier_ids[$supplier_id] = $supplier_id;
+            }
+        }
+
+        return array_values($supplier_ids);
+    }
+
+    /**
+     * Builds a permission id for item supplier scope access.
+     */
+    public function build_item_scope_supplier_permission_id(int $supplier_id): string
+    {
+        return self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX . $supplier_id;
+    }
+
+    /**
+     * Decodes item supplier scope permission id to supplier id.
+     */
+    public function decode_item_scope_supplier_permission_id(string $permission_id): ?int
+    {
+        if (!str_starts_with($permission_id, self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX)) {
+            return null;
+        }
+
+        $suffix = substr($permission_id, strlen(self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX));
+        if ($suffix === '' || !ctype_digit($suffix)) {
+            return null;
+        }
+
+        return (int)$suffix;
     }
 
     /**
