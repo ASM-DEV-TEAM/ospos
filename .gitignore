@@ -1,1 +1,8 @@
 /.env
+writable/
+vendor/
+node_modules/
+.DS_Store
+.idea/
+.vscode/
+*.log
