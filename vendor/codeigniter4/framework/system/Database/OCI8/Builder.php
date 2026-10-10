@@ -49,16 +49,6 @@ class Builder extends BaseBuilder
     protected $countString = 'SELECT COUNT(1) ';
 
     /**
-     * Limit used flag
-     *
-     * If we use LIMIT, we'll add a field that will
-     * throw off num_fields later.
-     *
-     * @var bool
-     */
-    protected $limitUsed = false;
-
-    /**
      * A reference to the database connection.
      *
      * @var Connection
@@ -160,9 +150,9 @@ class Builder extends BaseBuilder
     /**
      * Compiles a delete string and runs the query
      *
-     * @param mixed $where
+     * @param array<int|string, mixed>|RawSql|string $where
      *
-     * @return mixed
+     * @return bool|string
      *
      * @throws DatabaseException
      */
@@ -214,28 +204,13 @@ class Builder extends BaseBuilder
     protected function _limit(string $sql, bool $offsetIgnore = false): string
     {
         $offset = (int) ($offsetIgnore === false ? $this->QBOffset : 0);
-        if (version_compare($this->db->getVersion(), '12.1', '>=')) {
-            // OFFSET-FETCH can be used only with the ORDER BY clause
-            if (empty($this->QBOrderBy)) {
-                $sql .= ' ORDER BY 1';
-            }
 
-            return $sql . ' OFFSET ' . $offset . ' ROWS FETCH NEXT ' . $this->QBLimit . ' ROWS ONLY';
+        // OFFSET-FETCH can be used only with the ORDER BY clause
+        if (empty($this->QBOrderBy)) {
+            $sql .= ' ORDER BY 1';
         }
 
-        $this->limitUsed    = true;
-        $limitTemplateQuery = 'SELECT * FROM (SELECT INNER_QUERY.*, ROWNUM RNUM FROM (%s) INNER_QUERY WHERE ROWNUM < %d)' . ($offset !== 0 ? ' WHERE RNUM >= %d' : '');
-
-        return sprintf($limitTemplateQuery, $sql, $offset + $this->QBLimit + 1, $offset);
-    }
-
-    /**
-     * Resets the query builder values.  Called by the get() function
-     */
-    protected function resetSelect()
-    {
-        $this->limitUsed = false;
-        parent::resetSelect();
+        return $sql . ' OFFSET ' . $offset . ' ROWS FETCH NEXT ' . $this->QBLimit . ' ROWS ONLY';
     }
 
     /**
@@ -273,7 +248,7 @@ class Builder extends BaseBuilder
             $sql .= 'ON (' . implode(
                 ' AND ',
                 array_map(
-                    static fn ($key, $value) => (
+                    static fn ($key, $value): RawSql|string => (
                         ($value instanceof RawSql && is_string($key))
                         ?
                         $table . '.' . $key . ' = ' . $value
@@ -378,7 +353,7 @@ class Builder extends BaseBuilder
             $sql .= implode(
                 ' AND ',
                 array_map(
-                    static fn ($key, $value) => (
+                    static fn ($key, $value): RawSql|string => (
                         ($value instanceof RawSql && is_string($key))
                         ?
                         $table . '.' . $key . ' = ' . $value
@@ -467,7 +442,7 @@ class Builder extends BaseBuilder
             $sql .= 'WHERE ' . implode(
                 ' AND ',
                 array_map(
-                    static fn ($key, $value) => (
+                    static fn ($key, $value): RawSql|string => (
                         $value instanceof RawSql ?
                         $value :
                         (
@@ -482,11 +457,7 @@ class Builder extends BaseBuilder
             );
 
             // convert binds in where
-            foreach ($this->QBWhere as $key => $where) {
-                foreach ($this->binds as $field => $bind) {
-                    $this->QBWhere[$key]['condition'] = str_replace(':' . $field . ':', $bind[0], $where['condition']);
-                }
-            }
+            $this->convertWhereBindsForBatch();
 
             $sql .= ' ' . str_replace(
                 'WHERE ',

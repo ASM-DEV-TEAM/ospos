@@ -1,36 +1,48 @@
 {
     "name": "opensourcepos/opensourcepos",
-    "version": "1.0.0+no-version-set",
+    "version": "3.4.2",
     "license": [
         "MIT"
     ],
     "dependencies": {
         "codeigniter4/framework": {
-            "version": "v4.6.0",
+            "version": "v4.7.4",
             "license": [
                 "MIT"
             ]
         },
         "dompdf/dompdf": {
-            "version": "v2.0.4",
+            "version": "v3.1.6",
             "license": [
                 "LGPL-2.1"
             ]
         },
+        "dompdf/php-font-lib": {
+            "version": "1.0.2",
+            "license": [
+                "LGPL-2.1-or-later"
+            ]
+        },
+        "dompdf/php-svg-lib": {
+            "version": "1.0.2",
+            "license": [
+                "LGPL-3.0-or-later"
+            ]
+        },
         "ezyang/htmlpurifier": {
-            "version": "v4.17.0",
+            "version": "v4.19.0",
             "license": [
                 "LGPL-2.1-or-later"
             ]
         },
         "laminas/laminas-escaper": {
-            "version": "2.16.0",
+            "version": "2.18.0",
             "license": [
                 "BSD-3-Clause"
             ]
         },
         "masterminds/html5": {
-            "version": "2.8.1",
+            "version": "2.10.1",
             "license": [
                 "MIT"
             ]
@@ -41,44 +53,26 @@
                 "MIT"
             ]
         },
-        "phenx/php-font-lib": {
-            "version": "0.5.6",
-            "license": [
-                "LGPL-2.1-or-later"
-            ]
-        },
-        "phenx/php-svg-lib": {
-            "version": "0.5.2",
-            "license": [
-                "LGPL-3.0"
-            ]
-        },
         "picqer/php-barcode-generator": {
-            "version": "v2.4.0",
+            "version": "v2.4.2",
             "license": [
                 "LGPL-3.0-or-later"
             ]
         },
         "sabberworm/php-css-parser": {
-            "version": "v8.5.1",
-            "license": [
-                "MIT"
-            ]
-        },
-        "symfony/polyfill-ctype": {
-            "version": "v1.31.0",
-            "license": [
-                "MIT"
-            ]
-        },
-        "symfony/polyfill-mbstring": {
-            "version": "v1.31.0",
+            "version": "v9.4.0",
             "license": [
                 "MIT"
             ]
         },
         "tamtamchik/namecase": {
             "version": "3.0.0",
+            "license": [
+                "MIT"
+            ]
+        },
+        "thecodingmachine/safe": {
+            "version": "v3.4.0",
             "license": [
                 "MIT"
             ]

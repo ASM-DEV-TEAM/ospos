@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\ResultInterface;
 use CodeIgniter\Model;
 use Config\OSPOS;
@@ -17,6 +16,28 @@ use stdClass;
  */
 class Item extends Model
 {
+
+    public const ALLOWED_SUGGESTIONS_COLUMNS = ['name', 'item_number', 'description', 'cost_price', 'unit_price'];
+    public const ALLOWED_SUGGESTIONS_COLUMNS_WITH_EMPTY = ['', 'name', 'item_number', 'description', 'cost_price', 'unit_price'];
+
+    /**
+     * Sentinel posted by the bulk edit form to clear supplier_id, since an empty
+     * value there means "leave the column alone". Non-numeric so it can never
+     * collide with a suppliers.person_id.
+     */
+    public const CLEAR_SUPPLIER_OPTION = 'NONE';
+
+    public const ALLOWED_BULK_EDIT_FIELDS = [
+        'name',
+        'category',
+        'supplier_id',
+        'cost_price',
+        'unit_price',
+        'reorder_level',
+        'description',
+        'allow_alt_description',
+        'is_serialized'
+    ];
     protected $table = 'items';
     protected $primaryKey = 'item_id';
     protected $useAutoIncrement = true;
@@ -44,106 +65,6 @@ class Item extends Model
         'hsn_code'
     ];
 
-    /**
-     * Syncs item supplier-scope permission rows from existing items.
-     */
-    public function ensure_item_supplier_scope_permissions_exist(): void
-    {
-        $this->remove_legacy_item_company_permissions();
-
-        $supplier_builder = $this->db->table('items');
-        $supplier_builder->select('supplier_id');
-        $supplier_builder->where('supplier_id IS NOT NULL', null, false);
-        $supplier_builder->groupBy('supplier_id');
-        $supplier_rows = $supplier_builder->get()->getResultArray();
-
-        if (empty($supplier_rows)) {
-            return;
-        }
-
-        $permission_builder = $this->db->table('permissions');
-        $permission_builder->select('permission_id');
-        $permission_builder->where('module_id', 'items');
-        $permission_builder->like('permission_id', 'items_scope_supplier_', 'after');
-        $existing_permissions = array_column($permission_builder->get()->getResultArray(), 'permission_id');
-        $existing_permissions = array_fill_keys($existing_permissions, true);
-
-        $employee = model(Employee::class);
-        $permissions_to_insert = [];
-
-        foreach ($supplier_rows as $row) {
-            $supplier_id = (int)$row['supplier_id'];
-            if ($supplier_id <= 0) {
-                continue;
-            }
-
-            $permission_id = $employee->build_item_scope_supplier_permission_id($supplier_id);
-            if (isset($existing_permissions[$permission_id])) {
-                continue;
-            }
-
-            $permissions_to_insert[] = [
-                'permission_id' => $permission_id,
-                'module_id'     => 'items'
-            ];
-            $existing_permissions[$permission_id] = true;
-        }
-
-        if (!empty($permissions_to_insert)) {
-            $this->db->table('permissions')->insertBatch($permissions_to_insert);
-        }
-    }
-
-    /**
-     * Removes legacy item-company permissions (items_company_*_only).
-     * Grants are removed automatically by FK cascade on permissions delete.
-     */
-    private function remove_legacy_item_company_permissions(): void
-    {
-        $builder = $this->db->table('permissions');
-        $builder->where('module_id', 'items');
-        $builder->where("permission_id REGEXP '^items_company_.*_only$'", null, false);
-        $builder->delete();
-    }
-
-    /**
-     * Applies item supplier-scope access restriction for the selected user.
-     */
-    public function apply_item_supplier_scope_restriction(BaseBuilder $builder, ?int $person_id, string $table_alias = 'items'): void
-    {
-        if ($person_id === null) {
-            return;
-        }
-
-        $employee = model(Employee::class);
-        $allowed_supplier_ids = $employee->get_allowed_item_supplier_ids($person_id);
-
-        // No supplier-scope grants means unrestricted access.
-        if (empty($allowed_supplier_ids)) {
-            return;
-        }
-
-        $qualified_supplier_id = $table_alias === '' ? '`supplier_id`' : '`' . $table_alias . '`.`supplier_id`';
-        $allowed_supplier_ids = array_map('intval', $allowed_supplier_ids);
-        $allowed_supplier_ids = array_values(array_filter($allowed_supplier_ids, static fn(int $id): bool => $id > 0));
-        if (empty($allowed_supplier_ids)) {
-            return;
-        }
-        $builder->where($qualified_supplier_id . ' IN (' . implode(',', $allowed_supplier_ids) . ')', null, false);
-    }
-
-    /**
-     * Returns true if the item is accessible by the given employee scope.
-     */
-    public function is_item_accessible(int $item_id, ?int $person_id): bool
-    {
-        $builder = $this->db->table('items');
-        $builder->where('item_id', $item_id);
-        $this->apply_item_supplier_scope_restriction($builder, $person_id, '');
-
-        return $builder->countAllResults() > 0;
-    }
-
 
     /**
      * Determines if a given item_id is an item
@@ -151,14 +72,16 @@ class Item extends Model
     public function exists(string $item_id, bool $ignore_deleted = false, bool $deleted = false): bool
     {
         $builder = $this->db->table('items');
+        $builder->groupStart();
         $builder->where('item_id', $item_id);
         $builder->orWhere('item_number', $item_id);
+        $builder->groupEnd();
 
         if (!$ignore_deleted) {
             $builder->where('deleted', $deleted);
         }
 
-        return ($builder->get()->getNumRows() === 1);
+        return ($builder->get()->getNumRows() >= 1);
     }
 
     /**
@@ -300,16 +223,16 @@ class Item extends Model
 
         if (!empty($search)) {
             if ($attributes_enabled && $filters['search_custom']) {
-                $builder->having("attribute_values LIKE '%$search%'");
-                $builder->orHaving("attribute_dtvalues LIKE '%$search%'");
-                $builder->orHaving("attribute_dvalues LIKE '%$search%'");
+                $builder->havingLike('attribute_values', $search);
+                $builder->orHavingLike('attribute_dtvalues', $search);
+                $builder->orHavingLike('attribute_dvalues', $search);
             } else {
                 $builder->groupStart();
                 $builder->like('name', $search);
                 $builder->orLike('item_number', $search);
-                $builder->orLike('items.item_id', $search, 'both', false);
+                $builder->orLike('items.item_id', $search);
                 $builder->orLike('company_name', $search);
-                $builder->orLike('items.category', $search, 'both', false);
+                $builder->orLike('items.category', $search);
                 $builder->groupEnd();
             }
         }
@@ -324,10 +247,7 @@ class Item extends Model
             $builder->join('attribute_values', 'attribute_values.attribute_id = attribute_links.attribute_id', 'left');
         }
 
-        $builder->where('items.deleted = ' . (int)$filters['is_deleted'], null, false);
-        if (isset($filters['person_id']) && $filters['person_id'] !== null) {
-            $this->apply_item_supplier_scope_restriction($builder, (int)$filters['person_id']);
-        }
+        $builder->where('items.deleted', $filters['is_deleted']);
 
         if ($filters['empty_upc']) {
             $builder->where('item_number', null);
@@ -339,17 +259,13 @@ class Item extends Model
             $builder->where('is_serialized', 1);
         }
         if ($filters['no_description']) {
-            $builder->where('items.description = ' . $this->db->escape(''), null, false);
+            $builder->where('items.description', '');
         }
         if ($filters['temporary']) {
-            $builder->where('items.item_type = ' . ITEM_TEMP, null, false);
+            $builder->where('items.item_type', ITEM_TEMP);
         } else {
             $non_temp = [ITEM, ITEM_KIT, ITEM_AMOUNT_ENTRY];
-            $builder->whereIn('items.item_type', $non_temp, false);
-        }
-
-        if (!empty($filters['category'])) {
-            $builder->where('items.category = ' . $this->db->escape($filters['category']), null, false);
+            $builder->whereIn('items.item_type', $non_temp);
         }
 
         // get_found_rows case
@@ -358,7 +274,7 @@ class Item extends Model
         }
 
         // Avoid duplicated entries with same name because of inventory reporting multiple changes on the same item in the same date range
-        $builder->groupBy('items.item_id', false);
+        $builder->groupBy('items.item_id');
 
         // Order by name of item by default
         $builder->orderBy($sort, $order);
@@ -445,7 +361,7 @@ class Item extends Model
     /**
      * Gets information about a particular item by item id or number
      */
-    public function get_info_by_id_or_number(string $item_id, bool $include_deleted = true)
+    public function get_info_by_id_or_number(string $item_id, bool $include_deleted = true): stdClass|string
     {
         $builder = $this->db->table('items');
         $builder->groupStart();
@@ -482,9 +398,10 @@ class Item extends Model
     public function get_item_id(string $item_number, bool $ignore_deleted = false, bool $deleted = false): bool|int
     {
         $builder = $this->db->table('items');
-        $builder->join('suppliers', 'suppliers.person_id = items.supplier_id', 'left');
+        $builder->groupStart();
         $builder->where('item_number', $item_number);
         $builder->orWhere('item_id', $item_number);
+        $builder->groupEnd();
 
         if (!$ignore_deleted) {
             $builder->where('items.deleted', $deleted);
@@ -558,14 +475,71 @@ class Item extends Model
     }
 
     /**
+     * Reduces raw bulk edit input to the columns that may be bulk updated.
+     *
+     * Keys outside ALLOWED_BULK_EDIT_FIELDS are dropped, and a field that is absent,
+     * empty, or invalid for its column is left untouched so it keeps its current
+     * value. Prices and quantities are locale-parsed the same way postSave() does,
+     * booleans must be 0/1, and supplier_id must be numeric. supplier_id is
+     * nullable, so CLEAR_SUPPLIER_OPTION is how the form asks for it to be cleared.
+     */
+    public static function filterBulkEditFields(array $input): array
+    {
+        $itemData = [];
+
+        foreach (self::ALLOWED_BULK_EDIT_FIELDS as $field) {
+            $value = $input[$field] ?? null;
+
+            if ($value === null || $value === '' || !is_scalar($value)) {
+                continue;
+            }
+
+            if ($field === 'supplier_id') {
+                if ($value === self::CLEAR_SUPPLIER_OPTION) {
+                    $itemData[$field] = null;
+                } elseif (ctype_digit((string)$value)) {
+                    $itemData[$field] = (int)$value;
+                }
+
+                continue;
+            }
+
+            if ($field === 'cost_price' || $field === 'unit_price') {
+                $value = parse_decimals((string)$value);
+            } elseif ($field === 'reorder_level') {
+                $value = parse_quantity((string)$value);
+            } elseif ($field === 'allow_alt_description' || $field === 'is_serialized') {
+                if (!in_array((string)$value, ['0', '1'], true)) {
+                    continue;
+                }
+            }
+
+            if ($value === false) {
+                continue;
+            }
+
+            $itemData[$field] = $value;
+        }
+
+        return $itemData;
+    }
+
+    /**
      * Updates multiple items at once
      */
-    public function update_multiple(array $item_data, string $item_ids): bool
+    public function updateMultiple(array $itemData, string $itemIds): bool
     {
-        $builder = $this->db->table('items');
-        $builder->whereIn('item_id', explode(':', $item_ids));
+        // Query Builder bypasses $allowedFields, so the whitelist is enforced here
+        $itemData = array_intersect_key($itemData, array_flip(self::ALLOWED_BULK_EDIT_FIELDS));
 
-        return $builder->update($item_data);
+        if (empty($itemData)) {
+            return false;
+        }
+
+        $builder = $this->db->table('items');
+        $builder->whereIn('item_id', explode(':', $itemIds));
+
+        return $builder->update($itemData);
     }
 
     /**
@@ -640,13 +614,17 @@ class Item extends Model
     public function get_search_suggestion_format(?string $seed = null): string
     {
         $config = config(OSPOS::class)->settings;
-        $seed .= ',' . $config['suggestions_first_column'];
 
-        if ($config['suggestions_second_column'] !== '') {
+        $suggestionsFirstColumn = $this->suggestionColumnIsAllowed($config['suggestions_first_column'])
+            ? $config['suggestions_first_column']
+            : 'name';
+        $seed .= ',' . $suggestionsFirstColumn;
+
+        if ($config['suggestions_second_column'] !== '' && $this->suggestionColumnIsAllowed($config['suggestions_second_column'])) {
             $seed .= ',' . $config['suggestions_second_column'];
         }
 
-        if ($config['suggestions_third_column'] !== '') {
+        if ($config['suggestions_third_column'] !== '' && $this->suggestionColumnIsAllowed($config['suggestions_third_column'])) {
             $seed .= ',' . $config['suggestions_third_column'];
         }
 
@@ -662,9 +640,15 @@ class Item extends Model
         $config = config(OSPOS::class)->settings;
 
         $label = '';
-        $label1 = $config['suggestions_first_column'];
-        $label2 = $config['suggestions_second_column'];
-        $label3 = $config['suggestions_third_column'];
+        $label1 = $this->suggestionColumnIsAllowed($config['suggestions_first_column'])
+            ? $config['suggestions_first_column']
+            : 'name';
+        $label2 = $this->suggestionColumnIsAllowed($config['suggestions_second_column'])
+            ? $config['suggestions_second_column']
+            : '';
+        $label3 = $this->suggestionColumnIsAllowed($config['suggestions_third_column'])
+            ? $config['suggestions_third_column']
+            : '';
 
         $this->format_result_numbers($result_row);
 
@@ -686,6 +670,17 @@ class Item extends Model
         }
 
         return $label;
+    }
+
+    /**
+     * Validates if a column name is in the allowed suggestions columns.
+     *
+     * @param string $columnName
+     * @return bool
+     */
+    private function suggestionColumnIsAllowed(string $columnName): bool
+    {
+        return in_array($columnName, self::ALLOWED_SUGGESTIONS_COLUMNS, true);
     }
 
     /**
@@ -745,7 +740,6 @@ class Item extends Model
         $builder->select($this->get_search_suggestion_format('item_id, name, pack_name'));
         $builder->where('deleted', $filters['is_deleted']);
         $builder->whereIn('item_type', $non_kit); // Standard, exclude kit items since kits will be picked up later
-        $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
         $builder->like('name', $search);    // TODO: this and the next 11 lines are duplicated directly below.  We should extract a method here.
         $builder->orderBy('name', 'asc');
 
@@ -757,7 +751,6 @@ class Item extends Model
         $builder->select($this->get_search_suggestion_format('item_id, item_number, pack_name'));
         $builder->where('deleted', $filters['is_deleted']);
         $builder->whereIn('item_type', $non_kit); // Standard, exclude kit items since kits will be picked up later
-        $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
         $builder->like('item_number', $search);
         $builder->orderBy('item_number', 'asc');
 
@@ -770,7 +763,6 @@ class Item extends Model
             $builder = $this->db->table('items');
             $builder->select('category');
             $builder->where('deleted', $filters['is_deleted']);
-            $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
             $builder->distinct();    // TODO: duplicate code.  Refactor method.
             $builder->like('category', $search);
             $builder->orderBy('category', 'asc');
@@ -798,7 +790,6 @@ class Item extends Model
             $builder = $this->db->table('items');
             $builder->select($this->get_search_suggestion_format('item_id, name, pack_name, description'));
             $builder->where('deleted', $filters['is_deleted']);
-            $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
             $builder->like('description', $search);    // TODO: duplicate code, refactor method.
             $builder->orderBy('description', 'asc');
 
@@ -960,7 +951,6 @@ class Item extends Model
         $builder->select('item_id, name');
         $builder->where('deleted', $filters['is_deleted']);
         $builder->where('item_type', ITEM_KIT);
-        $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
         $builder->like('name', $search);
         $builder->orderBy('name', 'asc');
 
@@ -971,7 +961,6 @@ class Item extends Model
         $builder = $this->db->table('items');
         $builder->select('item_id, item_number');
         $builder->where('deleted', $filters['is_deleted']);
-        $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
         $builder->like('item_number', $search);
         $builder->where('item_type', ITEM_KIT);
         $builder->orderBy('item_number', 'asc');
@@ -986,7 +975,6 @@ class Item extends Model
             $builder->select('category');
             $builder->where('deleted', $filters['is_deleted']);
             $builder->where('item_type', ITEM_KIT);
-            $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
             $builder->distinct();    // TODO: duplicated code, refactor method.
             $builder->like('category', $search);
             $builder->orderBy('category', 'asc');
@@ -1014,7 +1002,6 @@ class Item extends Model
             $builder->select('item_id, name, description');
             $builder->where('deleted', $filters['is_deleted']);
             $builder->where('item_type', ITEM_KIT);
-            $this->apply_item_supplier_scope_restriction($builder, isset($filters['person_id']) ? (int)$filters['person_id'] : null, '');
             $builder->like('description', $search);
             $builder->orderBy('description', 'asc');
 

@@ -12,9 +12,16 @@ class AttributeLinksUniqueConstraint extends Migration
      */
     public function up(): void
     {
-        error_log('Migrating attribute_links unique constraint started');
+        helper('migration');
+        $foreignKeys = [
+            'ospos_attribute_links_ibfk_1',
+            'ospos_attribute_links_ibfk_2',
+        ];
 
-        execute_script(APPPATH . 'Database/Migrations/sqlscripts/3.4.1_attribute_links_unique_constraint.sql');
+        dropForeignKeyConstraints($foreignKeys, 'attribute_links');
+        dropColumnIfExists('ospos_attribute_links', 'generated_unique_column');
+
+        executeScript(APPPATH . 'Database/Migrations/sqlscripts/3.4.1_attribute_links_unique_constraint.sql');
     }
 
     /**

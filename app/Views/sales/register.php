@@ -57,6 +57,8 @@ if (!empty($warning)) {
 if (isset($success)) {
     echo '<div class="alert alert-dismissible alert-success">' . esc($success) . '</div>';
 }
+
+helper('url');
 ?>
 
 <div id="register_wrapper">
@@ -171,15 +173,15 @@ if (isset($success)) {
                             </td>
                             <?php if ($item['item_type'] == ITEM_TEMP) { ?>
                                 <td><?= form_input(['name' => 'item_number', 'id' => 'item_number', 'class' => 'form-control input-sm', 'value' => $item['item_number'], 'tabindex' => ++$tabindex]) ?></td>
-                                <td style="align: center;">
+                                <td style="text-align: center;">
                                     <?= form_input(['name' => 'name', 'id' => 'name', 'class' => 'form-control input-sm', 'value' => $item['name'], 'tabindex' => ++$tabindex]) ?>
                                 </td>
                             <?php } else { ?>
                                 <td><?= esc($item['item_number']) ?></td>
-                                <td style="align: center;">
-                                    <?= esc($item['name']) . ' ' . implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']]) ?>
+                                <td style="text-align: center;">
+                                    <?= esc($item['name']) . ' ' . esc(implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']])) ?>
                                     <br>
-                                    <?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']';
+                                    <?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . esc($item['stock_name']) . ']';
                                     endif; ?>
                                 </td>
                             <?php } ?>
@@ -234,7 +236,7 @@ if (isset($success)) {
                         <tr>
                             <?php if ($item['item_type'] == ITEM_TEMP) { ?>
                                 <td><?= form_input(['type' => 'hidden', 'name' => 'item_id', 'value' => $item['item_id']]) ?></td>
-                                <td style="align: center;" colspan="6">
+                                <td style="text-align: center;" colspan="6">
                                     <?= form_input(['name' => 'item_description', 'id' => 'item_description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'tabindex' => ++$tabindex]) ?>
                                 </td>
                                 <td> </td>
@@ -250,7 +252,7 @@ if (isset($success)) {
                                         echo form_input(['name' => 'description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'onClick' => 'this.select();']);
                                     } else {
                                         if ($item['description'] != '') {
-                                            echo $item['description'];
+                                            echo esc($item['description']);
                                             echo form_hidden('description', $item['description']);
                                         } else {
                                             echo lang(ucfirst($controller_name) . '.no_description');
@@ -296,7 +298,7 @@ if (isset($success)) {
                 <table class="sales_table_100">
                     <tr>
                         <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer') ?></th>
-                        <th style="width: 45%; text-align: right;"><?= anchor("customers/view/$customer_id", $customer, ['class' => 'modal-dlg', 'data-btn-submit' => lang('Common.submit'), 'title' => lang('Customers.update')]) ?></th>
+                        <th style="width: 45%; text-align: right;"><?= anchor("customers/view/$customer_id", esc($customer), ['class' => 'modal-dlg', 'data-btn-submit' => lang('Common.submit'), 'title' => lang('Customers.update')]) ?></th>
                     </tr>
                     <?php if (!empty($customer_email)) { ?>
                         <tr>
@@ -378,7 +380,7 @@ if (isset($success)) {
             </tr>
             <?php foreach ($taxes as $tax_group_index => $tax) { ?>
                 <tr>
-                    <th style="width: 55%;"><?= (float)$tax['tax_rate'] . '% ' . $tax['tax_group'] ?></th>
+                    <th style="width: 55%;"><?= (float)$tax['tax_rate'] . '% ' . esc($tax['tax_group']) ?></th>
                     <th style="width: 45%; text-align: right;"><?= to_currency_tax($tax['sale_tax_amount']) ?></th>
                 </tr>
             <?php } ?>
@@ -403,17 +405,42 @@ if (isset($success)) {
             <div id="payment_details">
                 <?php if ($payments_cover_total) { // Show Complete sale button instead of Add Payment if there is no amount due left ?>
                     <?= form_open("$controller_name/addPayment", ['id' => 'add_payment_form', 'class' => 'form-horizontal']) ?>
+                        <input type="hidden" name="complete_after_payment" value="0">
                         <table class="sales_table_100">
                             <tr>
                                 <td><?= lang(ucfirst($controller_name) . '.payment') ?></td>
                                 <td>
-                                    <?= form_dropdown('payment_type', $payment_options, $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit', 'disabled' => 'disabled']) ?>
+                                    <?= form_dropdown('payment_type', $payment_options, $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => '100%', 'disabled' => 'disabled']) ?>
                                 </td>
                             </tr>
                             <tr>
                                 <td><span id="amount_tendered_label"><?= lang(ucfirst($controller_name) . '.amount_tendered') ?></span></td>
                                 <td>
-                                    <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm disabled', 'disabled' => 'disabled', 'value' => '0', 'size' => '5', 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
+                                    <?= form_input([
+                                        'name' => 'amount_tendered',
+                                        'id' => 'amount_tendered',
+                                        'class' => 'form-control input-sm disabled',
+                                        'disabled' => 'disabled',
+                                        'value' => '0',
+                                        'size' => '5',
+                                        'tabindex' => ++$tabindex,
+                                        'onClick' => 'this.select();'
+                                    ]) ?>
+                                </td>
+                            </tr>
+                            <tr class="reference-code-input reference-code-input-hidden">
+                                <td style="padding-top: 8px;"><span id='reference_code_label'><?= lang('Sales.reference_code') ?></span></td>
+                                <td style="padding-top: 8px;">
+                                    <?php echo form_input(array(
+                                        'name'	=> 'reference_code',
+                                        'id'	=> 'reference_code',
+                                        'class'	=> 'form-control input-sm non-giftcard-input',
+                                        'disabled' => true,
+                                        'value'	=> '',
+                                        'size' => 5,
+                                        'tabindex'	=> ++$tabindex,
+                                        'onClick'	=> 'this.select();'));
+                                    ?>
                                 </td>
                             </tr>
                         </table>
@@ -443,11 +470,12 @@ if (isset($success)) {
                     ?>
                 <?php } else { ?>
                     <?= form_open("$controller_name/addPayment", ['id' => 'add_payment_form', 'class' => 'form-horizontal']) ?>
+                        <input type="hidden" name="complete_after_payment" value="0">
                         <table class="sales_table_100">
                             <tr>
                                 <td><?= lang(ucfirst($controller_name) . '.payment') ?></td>
                                 <td>
-                                    <?= form_dropdown('payment_type', $payment_options,  $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                                    <?= form_dropdown('payment_type', $payment_options,  $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => '100%']) ?>
                                 </td>
                             </tr>
                             <tr>
@@ -455,6 +483,21 @@ if (isset($success)) {
                                 <td>
                                     <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm non-giftcard-input', 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
                                     <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm giftcard-input', 'disabled' => true, 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex]) ?>
+                                </td>
+                            </tr>
+                            <tr class="reference-code-input reference-code-input-hidden">
+                                <td style="padding-top: 8px;"><span id='reference_code_label'><?= lang('Sales.reference_code') ?></span></td>
+                                <td style="padding-top: 8px;">
+                                    <?php echo form_input(array(
+                                        'name'     => 'reference_code',
+                                        'id'       => 'reference_code',
+                                        'class'    => 'form-control input-sm non-giftcard-input',
+                                        'disabled' => true,
+                                        'value'    => '',
+                                        'size'     => 5,
+                                        'tabindex' => ++$tabindex,
+                                        'onClick'  => 'this.select();'));
+                                    ?>
                                 </td>
                             </tr>
                         </table>
@@ -478,7 +521,7 @@ if (isset($success)) {
                         <tbody id="payment_contents">
                             <?php foreach ($payments as $payment_id => $payment) { ?>
                                 <tr>
-                                    <td><?= anchor("$controller_name/deletePayment/" . rawurlencode(base64_encode($payment_id)), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
+                                    <td><?= anchor("$controller_name/deletePayment/". esc(base64url_encode($payment_id), 'url'), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
                                     <td><?= $payment['payment_type'] ?></td>
                                     <td style="text-align: right;"><?= to_currency($payment['payment_amount']) ?></td>
                                 </tr>
@@ -563,6 +606,22 @@ if (isset($success)) {
 </div>
 
 <script type="text/javascript">
+    const keyboardShortcuts = <?= json_encode($keyboardShortcuts ?? []) ?>;
+    const paymentsCoverTotal = <?= json_encode((bool) $payments_cover_total) ?>;
+    const referenceCodePaymentTypes = <?= json_encode($reference_code_payment_types) ?>;
+    const shortcutCodes = {
+        items: keyboardShortcuts?.items?.code ?? null,
+        customers: keyboardShortcuts?.customers?.code ?? null,
+        suspend: keyboardShortcuts?.suspend?.code ?? null,
+        suspended: keyboardShortcuts?.suspended?.code ?? null,
+        amount: keyboardShortcuts?.amount?.code ?? null,
+        payment: keyboardShortcuts?.payment?.code ?? null,
+        complete: keyboardShortcuts?.complete?.code ?? null,
+        finish: keyboardShortcuts?.finish?.code ?? null,
+        help: keyboardShortcuts?.help?.code ?? null,
+        cancel: keyboardShortcuts?.cancel?.code ?? null
+    };
+
     $(document).ready(function() {
         const redirect = function() {
             window.location.href = "<?= site_url('sales'); ?>";
@@ -583,8 +642,8 @@ if (isset($success)) {
         });
 
         $("input[name='item_number']").change(function() {
-            var item_id = $(this).parents('tr').find("input[name='item_id']").val();
-            var item_number = $(this).val();
+            const item_id = $(this).parents('tr').find("input[name='item_id']").val();
+            const item_number = $(this).val();
             $.ajax({
                 url: "<?= site_url('sales/changeItemNumber') ?>",
                 method: 'post',
@@ -597,8 +656,8 @@ if (isset($success)) {
         });
 
         $("input[name='name']").change(function() {
-            var item_id = $(this).parents('tr').find("input[name='item_id']").val();
-            var item_name = $(this).val();
+            const item_id = $(this).parents('tr').find("input[name='item_id']").val();
+            const item_name = $(this).val();
             $.ajax({
                 url: "<?= site_url('sales/changeItemName') ?>",
                 method: 'post',
@@ -611,8 +670,8 @@ if (isset($success)) {
         });
 
         $("input[name='item_description']").change(function() {
-            var item_id = $(this).parents('tr').find("input[name='item_id']").val();
-            var item_description = $(this).val();
+            const item_id = $(this).parents('tr').find("input[name='item_id']").val();
+            const item_description = $(this).val();
             $.ajax({
                 url: "<?= site_url('sales/changeItemDescription') ?>",
                 method: 'post',
@@ -649,7 +708,7 @@ if (isset($success)) {
             }
         });
 
-        var clear_fields = function() {
+        const clear_fields = function() {
             if ($(this).val().match("<?= lang(ucfirst($controller_name) . '.start_typing_item_name') . '|' . lang(ucfirst($controller_name) . '.start_typing_customer_name') ?>")) {
                 $(this).val('');
             }
@@ -748,6 +807,7 @@ if (isset($success)) {
         });
 
         $('#add_payment_button').click(function() {
+            $('#add_payment_form').find('input[name="complete_after_payment"]').val('0');
             $('#add_payment_form').submit();
         });
 
@@ -785,7 +845,7 @@ if (isset($success)) {
                     $('#customer').val(response.id);
                     $('#select_customer_form').submit();
                 } else {
-                    var $stock_location = $("select[name='stock_location']").val();
+                    const $stock_location = $("select[name='stock_location']").val();
                     $('#item_location').val($stock_location);
                     $('#item').val(response.id);
                     if (stay_open) {
@@ -802,16 +862,20 @@ if (isset($success)) {
         });
 
         $('[name="discount_toggle"]').change(function() {
-            var input = $('<input>').attr('type', 'hidden').attr('name', 'discount_type').val(($(this).prop('checked')) ? 1 : 0);
+            const input = $('<input>').attr('type', 'hidden').attr('name', 'discount_type').val(($(this).prop('checked')) ? 1 : 0);
             $('#cart_' + $(this).attr('data-line')).append($(input));
             $('#cart_' + $(this).attr('data-line')).submit();
         });
     });
 
     function check_payment_type() {
-        var cash_mode = <?= json_encode($cash_mode) ?>;
+        const cash_mode = <?= json_encode($cash_mode) ?>;
+        const paymentType = $("#payment_types").val();
+        const isGiftCard = paymentType == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>";
+        const isCash = paymentType == "<?= lang(ucfirst($controller_name) . '.cash') ?>";
+        const needsReferenceCode = referenceCodePaymentTypes.indexOf(paymentType) !== -1;
 
-        if ($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
+        if (isGiftCard) {
             $("#sale_total").html("<?= to_currency($total) ?>");
             $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
             $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.giftcard_number') ?>");
@@ -819,13 +883,15 @@ if (isset($success)) {
             $(".giftcard-input").attr('disabled', false);
             $(".non-giftcard-input").attr('disabled', true);
             $(".giftcard-input:enabled").val('').focus();
-        } else if (($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
+            $(".reference-code-input").hide();
+        } else if (isCash && cash_mode == '1') {
             $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
             $("#sale_amount_due").html("<?= to_currency($cash_amount_due) ?>");
             $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
             $("#amount_tendered:enabled").val("<?= to_currency_no_money($cash_amount_due) ?>");
             $(".giftcard-input").attr('disabled', true);
             $(".non-giftcard-input").attr('disabled', false);
+            $(".reference-code-input").hide();
         } else {
             $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
             $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
@@ -833,47 +899,63 @@ if (isset($success)) {
             $("#amount_tendered:enabled").val("<?= to_currency_no_money($amount_due) ?>");
             $(".giftcard-input").attr('disabled', true);
             $(".non-giftcard-input").attr('disabled', false);
+            if (needsReferenceCode) {
+                $("#reference_code_label").html("<?= lang(ucfirst($controller_name) . '.reference_code') ?>");
+                $(".reference-code-input").show();
+                $(".reference-code-input input").attr('disabled', false);
+            } else {
+                $(".reference-code-input").hide();
+                $(".reference-code-input input").attr('disabled', true);
+            }
         }
     }
 
     // Add Keyboard Shortcuts/Hotkeys to Sale Register
-    document.body.onkeyup = function(e) {
-        switch (event.altKey && event.keyCode) {
-            case 49: // Alt + 1 Items Seach
-                $("#item").focus();
-                $("#item").select();
-                break;
-            case 50: // Alt + 2 Customers Search
-                $("#customer").focus();
-                $("#customer").select();
-                break;
-            case 51: // Alt + 3 Suspend Current Sale
-                $("#suspend_sale_button").click();
-                break;
-            case 52: // Alt + 4 Check Suspended
-                $("#show_suspended_sales_button").click();
-                break;
-            case 53: // Alt + 5 Edit Amount Tendered Value
-                $("#amount_tendered").focus();
-                $("#amount_tendered").select();
-                break;
-            case 54: // Alt + 6 Add Payment
-                $("#add_payment_button").click();
-                break;
-            case 55: // Alt + 7 Add Payment and Complete Sales/Invoice
-                $("#add_payment_button").click();
-                window.location.href = "<?= 'sales/complete' ?>";
-                break;
-            case 56: // Alt + 8 Finish Quote/Invoice without payment
-                $("#finish_invoice_quote_button").click();
-                break;
-            case 57: // Alt + 9 Open Shortcuts Help Modal
-                $("#show_keyboard_help").click();
-                break;
+    document.body.onkeyup = function(event) {
+        if ($(event.target).closest('.modal').length || $('.modal.in').length) {
+            return;
+        }
+        if (event.altKey) {
+            switch (event.keyCode) {
+                case shortcutCodes.items:
+                    $("#item").focus();
+                    $("#item").select();
+                    break;
+                case shortcutCodes.customers:
+                    $("#customer").focus();
+                    $("#customer").select();
+                    break;
+                case shortcutCodes.suspend:
+                    $("#suspend_sale_button").click();
+                    break;
+                case shortcutCodes.suspended:
+                    $("#show_suspended_sales_button").click();
+                    break;
+                case shortcutCodes.amount:
+                    $("#amount_tendered").focus();
+                    $("#amount_tendered").select();
+                    break;
+                case shortcutCodes.payment:
+                    $("#add_payment_button").click();
+                    break;
+                case shortcutCodes.complete:
+                    if (paymentsCoverTotal && $("#finish_sale_button").length) {
+                        $("#finish_sale_button").click();
+                    } else {
+                        $("#add_payment_button").click();
+                    }
+                    break;
+                case shortcutCodes.finish:
+                    $("#finish_invoice_quote_button").click();
+                    break;
+                case shortcutCodes.help:
+                    $("#show_keyboard_help").click();
+                    break;
+            }
         }
 
         switch (event.keyCode) {
-            case 27: // ESC Cancel Current Sale
+            case shortcutCodes.cancel:
                 $("#cancel_sale_button").click();
                 break;
         }

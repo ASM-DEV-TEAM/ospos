@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Cashup;
 use App\Models\Expense;
 use App\Models\Reports\Summary_payments;
+use CodeIgniter\HTTP\ResponseInterface;
 use Config\OSPOS;
 use Config\Services;
 
@@ -26,22 +27,25 @@ class Cashups extends Secure_Controller
     }
 
     /**
-     * @return void
+     * @return string
      */
-    public function getIndex(): void
+    public function getIndex(): string
     {
         $data['table_headers'] = get_cashups_manage_table_headers();
 
         // filters that will be loaded in the multiselect dropdown
         $data['filters'] = ['is_deleted' => lang('Cashups.is_deleted')];
 
-        echo view('cashups/manage', $data);
+        // Restore filters from URL
+        $data = array_merge($data, restoreTableFilters($this->request));
+
+        return view('cashups/manage', $data);
     }
 
     /**
      * @return void
      */
-    public function getSearch(): void
+    public function getSearch(): ResponseInterface
     {
         $search = $this->request->getGet('search');
         $limit = $this->request->getGet('limit', FILTER_SANITIZE_NUMBER_INT);
@@ -64,14 +68,14 @@ class Cashups extends Secure_Controller
             $data_rows[] = get_cash_up_data_row($cash_up);
         }
 
-        echo json_encode(['total' => $total_rows, 'rows' => $data_rows]);
+        return $this->response->setJSON(['total' => $total_rows, 'rows' => $data_rows]);
     }
 
     /**
      * @param int $cashup_id
-     * @return void
+     * @return string
      */
-    public function getView(int $cashup_id = NEW_ENTRY): void
+    public function getView(int $cashup_id = NEW_ENTRY): string
     {
         $data = [];
 
@@ -180,26 +184,26 @@ class Cashups extends Secure_Controller
 
         $data['cash_ups_info'] = $cash_ups_info;
 
-        echo view("cashups/form", $data);
+        return view("cashups/form", $data);
     }
 
     /**
      * @param int $row_id
-     * @return void
+     * @return ResponseInterface
      */
-    public function getRow(int $row_id): void
+    public function getRow(int $row_id): ResponseInterface
     {
         $cash_ups_info = $this->cashup->get_info($row_id);
         $data_row = get_cash_up_data_row($cash_ups_info);
 
-        echo json_encode($data_row);
+        return $this->response->setJSON($data_row);
     }
 
     /**
      * @param int $cashup_id
-     * @return void
+     * @return ResponseInterface
      */
-    public function postSave(int $cashup_id = NEW_ENTRY): void
+    public function postSave(int $cashup_id = NEW_ENTRY): ResponseInterface
     {
         $open_date = $this->request->getPost('open_date');
         $open_date_formatter = date_create_from_format($this->config['dateformat'] . ' ' . $this->config['timeformat'], $open_date);
@@ -207,56 +211,65 @@ class Cashups extends Secure_Controller
         $close_date = $this->request->getPost('close_date');
         $close_date_formatter = date_create_from_format($this->config['dateformat'] . ' ' . $this->config['timeformat'], $close_date);
 
+        $open_amount_cash     = parse_decimals($this->request->getPost('open_amount_cash'));
+        $transfer_amount_cash = parse_decimals($this->request->getPost('transfer_amount_cash'));
+        $closed_amount_cash   = parse_decimals($this->request->getPost('closed_amount_cash'));
+        $closed_amount_due    = parse_decimals($this->request->getPost('closed_amount_due'));
+        $closed_amount_card   = parse_decimals($this->request->getPost('closed_amount_card'));
+        $closed_amount_check  = parse_decimals($this->request->getPost('closed_amount_check'));
+
+        $logged_in_employee = $this->employee->get_logged_in_employee_info();
+
         $cash_up_data = [
             'open_date'            => $open_date_formatter->format('Y-m-d H:i:s'),
             'close_date'           => $close_date_formatter->format('Y-m-d H:i:s'),
-            'open_amount_cash'     => parse_decimals($this->request->getPost('open_amount_cash')),
-            'transfer_amount_cash' => parse_decimals($this->request->getPost('transfer_amount_cash')),
-            'closed_amount_cash'   => parse_decimals($this->request->getPost('closed_amount_cash')),
-            'closed_amount_due'    => parse_decimals($this->request->getPost('closed_amount_due')),
-            'closed_amount_card'   => parse_decimals($this->request->getPost('closed_amount_card')),
-            'closed_amount_check'  => parse_decimals($this->request->getPost('closed_amount_check')),
-            'closed_amount_total'  => parse_decimals($this->request->getPost('closed_amount_total')),
+            'open_amount_cash'     => $open_amount_cash,
+            'transfer_amount_cash' => $transfer_amount_cash,
+            'closed_amount_cash'   => $closed_amount_cash,
+            'closed_amount_due'    => $closed_amount_due,
+            'closed_amount_card'   => $closed_amount_card,
+            'closed_amount_check'  => $closed_amount_check,
+            'closed_amount_total'  => $this->_calculate_total($open_amount_cash, $transfer_amount_cash, $closed_amount_due, $closed_amount_cash, $closed_amount_card, $closed_amount_check),
             'note'                 => $this->request->getPost('note') != null,
             'description'          => $this->request->getPost('description', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
-            'open_employee_id'     => $this->request->getPost('open_employee_id', FILTER_SANITIZE_NUMBER_INT),
-            'close_employee_id'    => $this->request->getPost('close_employee_id', FILTER_SANITIZE_NUMBER_INT),
+            'open_employee_id'     => $logged_in_employee->person_id,
+            'close_employee_id'    => $logged_in_employee->person_id,
             'deleted'              => $this->request->getPost('deleted') != null
         ];
 
         if ($this->cashup->save_value($cash_up_data, $cashup_id)) {
             // New cashup_id
             if ($cashup_id == NEW_ENTRY) {
-                echo json_encode(['success' => true, 'message' => lang('Cashups.successful_adding'), 'id' => $cash_up_data['cashup_id']]);
+                return $this->response->setJSON(['success' => true, 'message' => lang('Cashups.successful_adding'), 'id' => $cash_up_data['cashup_id']]);
             } else { // Existing Cashup
-                echo json_encode(['success' => true, 'message' => lang('Cashups.successful_updating'), 'id' => $cashup_id]);
+                return $this->response->setJSON(['success' => true, 'message' => lang('Cashups.successful_updating'), 'id' => $cashup_id]);
             }
         } else { // Failure
-            echo json_encode(['success' => false, 'message' => lang('Cashups.error_adding_updating'), 'id' => NEW_ENTRY]);
+            return $this->response->setJSON(['success' => false, 'message' => lang('Cashups.error_adding_updating'), 'id' => NEW_ENTRY]);
         }
     }
 
     /**
-     * @return void
+     * @return ResponseInterface
      */
-    public function postDelete(): void
+    public function postDelete(): ResponseInterface
     {
         $cash_ups_to_delete = $this->request->getPost('ids', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
         if ($this->cashup->delete_list($cash_ups_to_delete)) {
-            echo json_encode(['success' => true, 'message' => lang('Cashups.successful_deleted') . ' ' . count($cash_ups_to_delete) . ' ' . lang('Cashups.one_or_multiple'), 'ids' => $cash_ups_to_delete]);
+            return $this->response->setJSON(['success' => true, 'message' => lang('Cashups.successful_deleted') . ' ' . count($cash_ups_to_delete) . ' ' . lang('Cashups.one_or_multiple'), 'ids' => $cash_ups_to_delete]);
         } else {
-            echo json_encode(['success' => false, 'message' => lang('Cashups.cannot_be_deleted'), 'ids' => $cash_ups_to_delete]);
+            return $this->response->setJSON(['success' => false, 'message' => lang('Cashups.cannot_be_deleted'), 'ids' => $cash_ups_to_delete]);
         }
     }
 
     /**
      * Calculate the total for cashups. Used in app\Views\cashups\form.php
      *
-     * @return void
+     * @return ResponseInterface
      * @noinspection PhpUnused
      */
-    public function postAjax_cashup_total(): void
+    public function postAjax_cashup_total(): ResponseInterface
     {
         $open_amount_cash = parse_decimals($this->request->getPost('open_amount_cash'));
         $transfer_amount_cash = parse_decimals($this->request->getPost('transfer_amount_cash'));
@@ -267,7 +280,7 @@ class Cashups extends Secure_Controller
 
         $total = $this->_calculate_total($open_amount_cash, $transfer_amount_cash, $closed_amount_due, $closed_amount_cash, $closed_amount_card, $closed_amount_check);    // TODO: hungarian notation
 
-        echo json_encode(['total' => to_currency_no_money($total)]);
+        return $this->response->setJSON(['total' => to_currency_no_money($total)]);
     }
 
     /**

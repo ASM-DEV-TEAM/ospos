@@ -23,6 +23,19 @@ use ReflectionException;
  */
 class Sale_lib
 {
+    private const KEY_SHORTCUT_DEFAULTS = [
+        'cancel'    => ['value' => '27 | ESC', 'code' => 27, 'label' => 'ESC'],
+        'items'     => ['value' => '49 | ALT + 1', 'code' => 49, 'label' => 'ALT + 1'],
+        'customers' => ['value' => '50 | ALT + 2', 'code' => 50, 'label' => 'ALT + 2'],
+        'suspend'   => ['value' => '51 | ALT + 3', 'code' => 51, 'label' => 'ALT + 3'],
+        'suspended' => ['value' => '52 | ALT + 4', 'code' => 52, 'label' => 'ALT + 4'],
+        'amount'    => ['value' => '53 | ALT + 5', 'code' => 53, 'label' => 'ALT + 5'],
+        'payment'   => ['value' => '54 | ALT + 6', 'code' => 54, 'label' => 'ALT + 6'],
+        'complete'  => ['value' => '55 | ALT + 7', 'code' => 55, 'label' => 'ALT + 7'],
+        'finish'    => ['value' => '56 | ALT + 8', 'code' => 56, 'label' => 'ALT + 8'],
+        'help'      => ['value' => '57 | ALT + 9', 'code' => 57, 'label' => 'ALT + 9'],
+    ];
+
     private Attribute $attribute;
     private Customer $customer;
     private Dinner_table $dinner_table;
@@ -88,9 +101,18 @@ class Sale_lib
         return $register_modes;
     }
 
-    /**
-     * @return array
-     */
+    private const ALLOWED_INVOICE_TYPES = [
+        'invoice',
+        'tax_invoice',
+        'custom_invoice',
+        'custom_tax_invoice'
+    ];
+
+    private const ALLOWED_RECEIPT_TEMPLATES = [
+        'receipt_default',
+        'receipt_short'
+    ];
+
     public function get_invoice_type_options(): array
     {
         $invoice_types = [];
@@ -99,6 +121,54 @@ class Sale_lib
         $invoice_types['custom_invoice'] = lang('Sales.invoice_type_custom_invoice');
         $invoice_types['custom_tax_invoice'] = lang('Sales.invoice_type_custom_tax_invoice');
         return $invoice_types;
+    }
+
+    /**
+     * Returns the available keyboard shortcut choices for the configuration screen.
+     *
+     * @return array<string, string>
+     */
+    public function getKeyShortcutsOptions(): array
+    {
+        $keyShortcuts = [];
+
+        foreach (self::KEY_SHORTCUT_DEFAULTS as $shortcut) {
+            $keyShortcuts[$shortcut['value']] = $shortcut['label'];
+        }
+
+        return $keyShortcuts;
+    }
+
+    /**
+     * Returns parsed shortcut bindings from app_config with sensible defaults.
+     *
+     * @return array<string, array{value:string,code:int,label:string}>
+     */
+    public function getKeyShortcuts(): array
+    {
+        $keyboardShortcuts = [];
+
+        foreach (self::KEY_SHORTCUT_DEFAULTS as $name => $default) {
+            $value = $this->config["key_$name"] ?? $default['value'];
+            $parts = array_map('trim', explode('|', $value, 2));
+            $keyboardShortcuts[$name] = [
+                'value' => $value,
+                'code'  => (int)($parts[0] ?? $default['code']),
+                'label' => $parts[1] ?? $default['label']
+            ];
+        }
+
+        return $keyboardShortcuts;
+    }
+
+    public static function isValidInvoiceType(string $invoice_type): bool
+    {
+        return in_array($invoice_type, self::ALLOWED_INVOICE_TYPES, true);
+    }
+
+    public static function isValidReceiptTemplate(string $receipt_template): bool
+    {
+        return in_array($receipt_template, self::ALLOWED_RECEIPT_TEMPLATES, true);
     }
 
     /**
@@ -261,9 +331,9 @@ class Sale_lib
     /**
      * @return int|null
      */
-    public function get_sale_type(): ?int
+    public function getSaleType(): ?int
     {
-        return $this->session->get('sale_type', 0);
+        return $this->session->get('sale_type') ?? 0;
     }
 
     /**
@@ -488,10 +558,10 @@ class Sale_lib
     /**
      * Multiple Payments
      */
-    public function get_payments(): array
+    public function getPayments(): array
     {
         if (!$this->session->get('sales_payments')) {
-            $this->set_payments([]);
+            $this->setPayments([]);
         }
 
         return $this->session->get('sales_payments');
@@ -500,32 +570,34 @@ class Sale_lib
     /**
      * Multiple Payments
      */
-    public function set_payments(array $payments_data): void
+    public function setPayments(array $payments_data): void
     {
         $this->session->set('sales_payments', $payments_data);
     }
 
     /**
-     * Adds a new payment to the payments array or updates an existing one.
+     * Adds a new payment to the payment array or updates an existing one.
      * It will also disable cash_mode if a non-qualifying payment type is added.
-     * @param string $payment_id
-     * @param string $payment_amount
-     * @param int $cash_adjustment
+     * @param string $paymentId
+     * @param string $paymentAmount
+     * @param string|null $referenceCode
+     * @param int $cashAdjustment
      */
-    public function add_payment(string $payment_id, string $payment_amount, int $cash_adjustment = CASH_ADJUSTMENT_FALSE): void
+    public function addPayment(string $paymentId, string $paymentAmount, ?string $referenceCode = null, int $cashAdjustment = CASH_ADJUSTMENT_FALSE): void
     {
-        $payments = $this->get_payments();
-        if (isset($payments[$payment_id])) {
+        $payments = $this->getPayments();
+        if (isset($payments[$paymentId])) {
             // payment_method already exists, add to payment_amount
-            $payments[$payment_id]['payment_amount'] = bcadd($payments[$payment_id]['payment_amount'], $payment_amount);
+            $payments[$paymentId]['payment_amount'] = bcadd($payments[$paymentId]['payment_amount'], $paymentAmount);
         } else {
             // Add to existing array
             $payment = [
-                $payment_id => [
-                    'payment_type'    => $payment_id,
-                    'payment_amount'  => $payment_amount,
+                $paymentId => [
+                    'payment_type'    => $paymentId,
+                    'payment_amount'  => $paymentAmount,
                     'cash_refund'     => 0,
-                    'cash_adjustment' => $cash_adjustment
+                    'cash_adjustment' => $cashAdjustment,
+                    'reference_code'  => $referenceCode,
                 ]
             ];
 
@@ -533,12 +605,12 @@ class Sale_lib
         }
 
         if ($this->session->get('cash_mode')) {
-            if ($this->session->get('cash_rounding') && $payment_id != lang('Sales.cash') && $payment_id != lang('Sales.cash_adjustment')) {
+            if ($this->session->get('cash_rounding') && $paymentId != lang('Sales.cash') && $paymentId != lang('Sales.cash_adjustment')) {
                 $this->session->set('cash_mode', CASH_MODE_FALSE);
             }
         }
 
-        $this->set_payments($payments);
+        $this->setPayments($payments);
     }
 
     /**
@@ -546,11 +618,11 @@ class Sale_lib
      */
     public function edit_payment(string $payment_id, float $payment_amount): bool
     {
-        $payments = $this->get_payments();
+        $payments = $this->getPayments();
         if (isset($payments[$payment_id])) {
             $payments[$payment_id]['payment_type'] = $payment_id;
             $payments[$payment_id]['payment_amount'] = $payment_amount;
-            $this->set_payments($payments);
+            $this->setPayments($payments);
 
             return true;
         }
@@ -565,7 +637,7 @@ class Sale_lib
      */
     public function delete_payment(string $payment_id): void
     {
-        $payments = $this->get_payments();
+        $payments = $this->getPayments();
         $decoded_payment_id = urldecode($payment_id);
 
         unset($payments[$decoded_payment_id]);
@@ -581,7 +653,7 @@ class Sale_lib
                 unset($payments[lang('Sales.cash')]);
             }
         }
-        $this->set_payments($payments);
+        $this->setPayments($payments);
     }
 
     /**
@@ -601,7 +673,7 @@ class Sale_lib
         $subtotal = '0.0';
         $cash_mode_eligible = CASH_MODE_TRUE;
 
-        foreach ($this->get_payments() as $payments) {
+        foreach ($this->getPayments() as $payments) {
             if (!$payments['cash_adjustment']) {
                 $subtotal = bcadd($payments['payment_amount'], $subtotal);
             }
@@ -1316,7 +1388,7 @@ class Sale_lib
 
         // Now load payments
         foreach ($this->sale->get_sale_payments($sale_id)->getResult() as $row) {
-            $this->add_payment($row->payment_type, $row->payment_amount, $row->cash_adjustment);
+            $this->addPayment($row->payment_type, $row->payment_amount, $row->reference_code ?? null, $row->cash_adjustment);
         }
 
         $this->set_customer($this->sale->get_customer($sale_id)->person_id);

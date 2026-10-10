@@ -7,19 +7,7 @@
 ?>
 
 <script type="text/javascript">
-    function applyThermalPaperClass(storageKey) {
-        if (!window.localStorage) {
-            return;
-        }
-
-        var printerName = (localStorage[storageKey] || '').toLowerCase();
-        var isThermal80 = /(xp[\s-]?80|pos[\s-]?80|80\s*mm|80mm)/.test(printerName);
-        document.body.classList.toggle('thermal-80mm', isThermal80);
-    }
-
     function printdoc() {
-        applyThermalPaperClass('<?= esc($selected_printer, 'js') ?>');
-
         // Install Firefox addon in order to use this plugin
         if (window.jsPrintSetup) {
             // Set top margins in millimeters
@@ -41,11 +29,11 @@
                 jsPrintSetup.setOption('footerStrRight', '');
             <?php } ?>
 
-            var printers = jsPrintSetup.getPrintersList().split(',');
+            const printers = jsPrintSetup.getPrintersList().split(',');
             // Get right printer here..
-            for (var index in printers) {
-                var default_ticket_printer = window.localStorage && localStorage['<?= esc($selected_printer, 'js') ?>'];
-                var selected_printer = printers[index];
+            for (const index in printers) {
+                const default_ticket_printer = window.localStorage && localStorage['<?= esc($selected_printer, 'js') ?>'];
+                const selected_printer = printers[index];
                 if (selected_printer == default_ticket_printer) {
                     // Select Epson label printer
                     jsPrintSetup.setPrinter(selected_printer);
@@ -70,7 +58,6 @@
     <?php if ($print_after_sale) { ?>
         $(window).on('load', (function() {
             // Executes when complete page is fully loaded, including all frames, objects and images
-            applyThermalPaperClass('<?= esc($selected_printer, 'js') ?>');
             printdoc();
 
             // After a delay, return to sales view
@@ -80,8 +67,4 @@
         }));
 
     <?php } ?>
-
-    $(document).ready(function() {
-        applyThermalPaperClass('<?= esc($selected_printer, 'js') ?>');
-    });
 </script>

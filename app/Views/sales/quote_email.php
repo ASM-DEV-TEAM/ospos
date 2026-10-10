@@ -15,7 +15,7 @@
 ?>
 
 <!doctype html>
-<html lang="<?= $this->request->getLocale() ?>">
+<html lang="<?= current_language_code() ?>">
 
 <head>
     <meta charset="utf-8">
@@ -58,14 +58,14 @@
                     </div>
                 </td>
                 <td id="meta">
-                    <table id="meta-content" align="right">
+                    <table id="meta-content" style="text-align: right;">
                         <tr>
                             <td class="meta-head"><?= lang('Sales.quote_number') ?> </td>
                             <td><?= esc($quote_number) ?></td>
                         </tr>
                         <tr>
                             <td class="meta-head"><?= lang('Common.date') ?></td>
-                            <td><?= $transaction_date ?></td>
+                            <td><?= esc($transaction_date) ?></td>
                         </tr>
                         <?php if ($amount_due > 0) { ?>
                             <tr>
@@ -85,7 +85,13 @@
                 <th><?= lang('Sales.quantity') ?></th>
                 <th><?= lang('Sales.price') ?></th>
                 <th><?= lang('Sales.discount') ?></th>
-                <?php $quote_columns = 6; ?>
+                <?php
+                $quote_columns = 6;
+                if ($discount > 0) {
+                    $quote_columns = $quote_columns + 1;
+                ?>
+                    <th><?= lang('Sales.customer_discount') ?></th>
+                <?php } ?>
                 <th><?= lang('Sales.total') ?></th>
             </tr>
 
@@ -99,43 +105,30 @@
                         <td><?= to_quantity_decimals($item['quantity']) ?></td>
                         <td><?= to_currency($item['price']) ?></td>
                         <td><?= ($item['discount_type'] == FIXED) ? to_currency($item['discount']) : to_decimals($item['discount']) . '%' ?></td>
+                        <?php if ($discount > 0): ?>
+                            <td><?= to_currency($item['discounted_total'] / $item['quantity']) ?></td>
+                        <?php endif; ?>
                         <td class="total-line"><?= to_currency($item['discounted_total']) ?></td>
                     </tr>
             <?php
                 }
             }
-
-            $subtotal_before_discount = 0.0;
-            foreach ($cart as $item) {
-                if ($item['print_option'] == PRINT_YES) {
-                    $subtotal_before_discount += isset($item['total'])
-                        ? (float)$item['total']
-                        : ((float)$item['price'] * (float)$item['quantity']);
-                }
-            }
-            $discount_total = $subtotal_before_discount - (float)$subtotal;
             ?>
 
             <tr>
-                <td colspan="<?= $quote_columns ?>" align="center"><?= '&nbsp;' //TODO: Replace the php echo for nbsp with just straight html? ?></td>
+                <td colspan="<?= $quote_columns ?>" style="text-align: center;"><?= '&nbsp;' //TODO: Replace the php echo for nbsp with just straight html? ?></td>
             </tr>
 
             <tr>
                 <td colspan="<?= $quote_columns - 3 ?>" class="blank"> </td>
                 <td colspan="2" class="total-line"><?= lang('Sales.sub_total') ?></td>
-                <td id="subtotal" class="total-value"><?= to_currency($subtotal_before_discount) ?></td>
-            </tr>
-
-            <tr>
-                <td colspan="<?= $quote_columns - 3 ?>" class="blank"> </td>
-                <td colspan="2" class="total-line"><?= lang('Sales.discount') ?></td>
-                <td id="discount_total" class="total-value"><?= to_currency($discount_total * -1) ?></td>
+                <td id="subtotal" class="total-value"><?= to_currency($subtotal) ?></td>
             </tr>
 
             <?php foreach ($taxes as $tax_group_index => $tax) { ?>
                 <tr>
                     <td colspan="<?= $quote_columns - 3 ?>" class="blank"> </td>
-                    <td colspan="2" class="total-line"><?= (float)$tax['tax_rate'] . '% ' . $tax['tax_group'] ?></td>
+                    <td colspan="2" class="total-line"><?= (float)$tax['tax_rate'] . '% ' . esc($tax['tax_group']) ?></td>
                     <td id="taxes" class="total-value"><?= to_currency_tax($tax['sale_tax_amount']) ?></td>
                 </tr>
             <?php } ?>
@@ -151,12 +144,12 @@
             <div id="sale_return_policy">
                 <h5>
                     <span><?= nl2br(esc($config['payment_message'])) ?></span>
-                    <span><?= lang('Sales.comments') . ': ' . (empty($comments) ? $config['quote_default_comments'] : esc($comments)) ?></span>
+                    <span><?= lang('Sales.comments') . ': ' . (empty($comments) ? esc($config['quote_default_comments']) : esc($comments)) ?></span>
                 </h5>
                 <?= nl2br(esc($config['return_policy'])) ?>
             </div>
             <div id="barcode">
-                <?= $quote_number ?>
+                <?= esc($quote_number) ?>
             </div>
         </div>
     </div>

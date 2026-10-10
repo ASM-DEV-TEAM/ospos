@@ -4,6 +4,7 @@ namespace App\Models;
 
 use CodeIgniter\Database\ResultInterface;
 use CodeIgniter\Session\Session;
+use stdClass;
 
 /**
  * Employee class
@@ -13,8 +14,6 @@ use CodeIgniter\Session\Session;
  */
 class Employee extends Person
 {
-    private const ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX = 'items_scope_supplier_';
-
     public Session $session;
     protected $table = 'Employees';
     protected $primaryKey = 'person_id';
@@ -131,46 +130,57 @@ class Employee extends Person
      */
     public function save_employee(array &$person_data, array &$employee_data, array &$grants_data, int $employee_id = NEW_ENTRY): bool
     {
-        $success = false;
+        $success = true;
+        $isNewEmployee = ($employee_id == NEW_ENTRY || !$this->exists($employee_id));
+        $grantChangeDisallowed = filter_var(getenv('DISALLOW_GRANT_CHANGE'), FILTER_VALIDATE_BOOLEAN);
 
         // Run these queries as a transaction, we want to make sure we do all or nothing
         $this->db->transStart();
 
-        if (ENVIRONMENT != 'testing' && parent::save_value($person_data, $employee_id)) {
-            $builder = $this->db->table('employees');
-            if ($employee_id == NEW_ENTRY || !$this->exists($employee_id)) {
+        if ($grantChangeDisallowed && $isNewEmployee && !empty($grants_data)) {
+            $this->db->transComplete();
+
+            return false;
+        }
+
+        $personSaved = parent::save_value($person_data, $employee_id);
+
+        if ($isNewEmployee && !$personSaved) {
+            // A new employee must have a person record; abort if the insert failed
+            $this->db->transComplete();
+
+            return false;
+        }
+
+        if ($personSaved) {
+            if ($isNewEmployee) {
                 $employee_data['person_id'] = $employee_id = $person_data['person_id'];
-                $success = $builder->insert($employee_data);
+                $success = $this->db->table('employees')->insert($employee_data);
             } else {
-                $builder->where('person_id', $employee_id);
-                $success = $builder->update($employee_data);
+                $success = $success && $this->db->table('employees')->where('person_id', $employee_id)->update($employee_data);
             }
+        }
 
-            // We have either inserted or updated a new employee, now lets set permissions.
-            if ($success) {
-                // First lets clear out any grants the employee currently has.
-                $builder = $this->db->table('grants');
-                $success = $builder->delete(['person_id' => $employee_id]);
+        // Grants update is gated only by the DISALLOW_GRANT_CHANGE flag, not by
+        // whether person/employee data was actually written (a 0-row affected
+        // update on existing data is a no-op, not a failure).
+        if (!$grantChangeDisallowed && !empty($grants_data)) {
+            $success = $success && $this->db->table('grants')->delete(['person_id' => $employee_id]);
 
-                // Now insert the new grants
-                if ($success) {
-                    foreach ($grants_data as $grant) {
-                        $data = [
-                            'permission_id' => $grant['permission_id'],
-                            'person_id'     => $employee_id,
-                            'menu_group'    => $grant['menu_group']
-                        ];
+            foreach ($grants_data as $grant) {
+                $data = [
+                    'permission_id' => $grant['permission_id'],
+                    'person_id'     => $employee_id,
+                    'menu_group'    => $grant['menu_group']
+                ];
 
-                        $builder = $this->db->table('grants');
-                        $success = $builder->insert($data);
-                    }
-                }
+                $success = $success && $this->db->table('grants')->insert($data);
             }
         }
 
         $this->db->transComplete();
 
-        $success &= $this->db->transStatus();
+        $success = $success && $this->db->transStatus();
 
         return $success;
     }
@@ -376,11 +386,21 @@ class Employee extends Person
             // Compare passwords depending on the hash version
             if ($row->hash_version === '1' && $row->password === md5($password)) {
                 $builder->where('person_id', $row->person_id);
-                $this->session->set('person_id', $row->person_id);
-                $password_hash = password_hash($password, PASSWORD_DEFAULT);
+                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+                $updated = $builder->update(['hash_version' => 2, 'password' => $passwordHash]);
 
-                return $builder->update(['hash_version' => 2, 'password' => $password_hash]);
+                if ($updated) {
+                    if (session_status() === PHP_SESSION_ACTIVE) {
+                        $this->session->regenerate(true);
+                    }
+                    $this->session->set('person_id', $row->person_id);
+                }
+
+                return $updated;
             } elseif ($row->hash_version === '2' && password_verify($password, $row->password)) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $this->session->regenerate(true);
+                }
                 $this->session->set('person_id', $row->person_id);
 
                 return true;
@@ -409,7 +429,7 @@ class Employee extends Person
     /**
      * Gets information about the currently logged in employee.
      */
-    public function get_logged_in_employee_info()
+    public function get_logged_in_employee_info(): float|false|array|int|string|stdClass|null
     {
         if ($this->is_logged_in()) {
             return $this->get_info($this->session->get('person_id'));
@@ -497,57 +517,6 @@ class Employee extends Person
     }
 
     /**
-     * Returns allowed supplier ids for item access.
-     * If empty, employee can access all suppliers.
-     */
-    public function get_allowed_item_supplier_ids(?int $person_id): array
-    {
-        if ($person_id === null) {
-            return [];
-        }
-
-        $builder = $this->db->table('grants');
-        $builder->select('permission_id');
-        $builder->where('person_id', $person_id);
-        $builder->like('permission_id', self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX, 'after');
-
-        $supplier_ids = [];
-        foreach ($builder->get()->getResultArray() as $grant) {
-            $supplier_id = $this->decode_item_scope_supplier_permission_id($grant['permission_id']);
-            if ($supplier_id !== null) {
-                $supplier_ids[$supplier_id] = $supplier_id;
-            }
-        }
-
-        return array_values($supplier_ids);
-    }
-
-    /**
-     * Builds a permission id for item supplier scope access.
-     */
-    public function build_item_scope_supplier_permission_id(int $supplier_id): string
-    {
-        return self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX . $supplier_id;
-    }
-
-    /**
-     * Decodes item supplier scope permission id to supplier id.
-     */
-    public function decode_item_scope_supplier_permission_id(string $permission_id): ?int
-    {
-        if (!str_starts_with($permission_id, self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX)) {
-            return null;
-        }
-
-        $suffix = substr($permission_id, strlen(self::ITEM_SCOPE_SUPPLIER_PERMISSION_PREFIX));
-        if ($suffix === '' || !ctype_digit($suffix)) {
-            return null;
-        }
-
-        return (int)$suffix;
-    }
-
-    /**
      * Attempts to log in employee and set session. Returns boolean based on outcome.
      */
     public function check_password(string $username, string $password): bool
@@ -573,7 +542,7 @@ class Employee extends Person
     {
         $success = false;
 
-        if (ENVIRONMENT != 'testing') {
+        if (!filter_var(getenv('DISALLOW_PASSWORD_CHANGE'), FILTER_VALIDATE_BOOLEAN)) {
             $this->db->transStart();
 
             $builder = $this->db->table('employees');
@@ -586,5 +555,42 @@ class Employee extends Person
         }
 
         return $success;
+    }
+
+    /**
+     * Checks if the employee has admin privileges (all module permissions).
+     * The first employee (person_id = 1) is considered admin by default.
+     */
+    public function isAdmin(int $person_id): bool
+    {
+        if ($person_id === 1) {
+            return true;
+        }
+
+        foreach (ADMIN_MODULES as $module) {
+            if (!$this->has_grant($module, $person_id)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks if current user can modify target employee.
+     * Only admins can modify other admin accounts.
+     * Users cannot modify their own grants unless they are admin.
+     */
+    public function canModifyEmployee(int $target_person_id, int $current_person_id): bool
+    {
+        if ($target_person_id === $current_person_id) {
+            return !$this->isAdmin($target_person_id) || $this->isAdmin($current_person_id);
+        }
+
+        if ($this->isAdmin($target_person_id) && !$this->isAdmin($current_person_id)) {
+            return false;
+        }
+
+        return true;
     }
 }

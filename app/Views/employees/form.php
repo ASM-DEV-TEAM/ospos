@@ -26,7 +26,7 @@
     </ul>
 
     <div class="tab-content">
-        <div class="tab-pane fade in active" id="employee_basic_info">
+        <div class="tab-pane active" id="employee_basic_info">
             <fieldset>
                 <?= view('people/form_basic_info') ?>
             </fieldset>
@@ -113,9 +113,10 @@
                 <p><?= lang('Employees.permission_desc') ?></p>
 
                 <ul id="permission_list">
+                    <?= form_hidden('module_validation', '1', 'class="module"') ?>
                     <?php foreach ($all_modules as $module) { ?>
                         <li>
-                            <?= form_checkbox("grant_$module->module_id", $module->module_id, $module->grant == 1, 'class="module"') ?>
+                            <?= form_checkbox("grant_$module->module_id", $module->module_id, $module->grant == 1, 'class="module-toggle"') ?>
                             <?= form_dropdown(
                                 "menu_group_$module->module_id",
                                 [
@@ -123,24 +124,18 @@
                                     'office' => lang('Module.office'),
                                     'both'   => lang('Module.both')
                                 ],
-                                $module->menu_group,
-                                'class="module"'
+                                $module->menu_group
                             ) ?>
 
                             <span class="medium"><?= lang("Module.$module->module_id") ?>:</span>
                             <span class="small"><?= lang("Module.$module->module_id" . '_desc') ?></span>
                             <?php
                             foreach ($all_subpermissions as $permission) {
+                                $exploded_permission = explode('_', $permission->permission_id, 2);
                                 if ($permission->module_id == $module->module_id) {
-                                    if (isset($permission->permission_label)) {
-                                        $lang_line = $permission->permission_label;
-                                    } else {
-                                        $exploded_permission = explode('_', $permission->permission_id, 2);
-                                        $lang_key = $module->module_id . '.' . $exploded_permission[1];
-                                        $lang_line = lang(ucfirst($lang_key));
-                                        $lang_line = (lang(ucfirst($lang_key)) == $lang_line) ? ucwords(str_replace("_", " ", $exploded_permission[1])) : $lang_line;
-                                    }
-
+                                    $lang_key = $module->module_id . '.' . $exploded_permission[1];
+                                    $lang_line = lang(ucfirst($lang_key));
+                                    $lang_line = (lang(ucfirst($lang_key)) == $lang_line) ? ucwords(str_replace("_", " ", $exploded_permission[1])) : $lang_line;
                                     if (!empty($lang_line)) {
                             ?>
                                         <ul>
@@ -171,11 +166,11 @@
             ignore: []
         });
 
-        $.validator.addMethod('module', function(value, element) {
-            var result = $('#permission_list input').is(':checked');
-            $('.module').each(function(index, element) {
-                var parent = $(element).parent();
-                var checked = $(element).is(':checked');
+        $.validator.addMethod('module', function() {
+            let result = $('#permission_list input').is(':checked');
+            $('.module-toggle').each(function(index, element) {
+                const parent = $(element);
+                const checked = $(element).is(':checked');
                 if ($('ul', parent).length > 0 && result) {
                     result &= !checked || (checked && $('ul > li > input:checked', parent).length > 0);
                 }
@@ -183,11 +178,11 @@
             return result;
         }, "<?= lang('Employees.subpermission_required') ?>");
 
-        $('ul#permission_list > li > input.module').each(function() {
-            var $this = $(this);
+        $('ul#permission_list > li > input.module-toggle').each(function() {
+            const $this = $(this);
             $('ul > li > input,select', $this.parent()).each(function() {
-                var $that = $(this);
-                var updateInputs = function(checked) {
+                const $that = $(this);
+                const updateInputs = function(checked) {
                     $that.prop('disabled', !checked);
                     !checked && $that.prop('checked', false);
                 }

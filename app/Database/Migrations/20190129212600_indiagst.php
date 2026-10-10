@@ -17,9 +17,7 @@ class Migration_IndiaGST extends Migration
 
         // If number of entries is greater than zero then the tax data needs to be migrated
         helper('migration');
-        execute_script(APPPATH . 'Database/Migrations/sqlscripts/3.3.0_indiagst.sql');
-
-        error_log('Migrating tax configuration');
+        executeScript(APPPATH . 'Database/Migrations/sqlscripts/3.3.0_indiagst.sql');
 
         $count_of_tax_codes = $this->get_count_of_tax_code_entries();
 
@@ -42,8 +40,6 @@ class Migration_IndiaGST extends Migration
         }
 
         $this->drop_backups();
-
-        error_log('Migrating tax configuration completed');
     }
 
     /**

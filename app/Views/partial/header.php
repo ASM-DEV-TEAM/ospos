@@ -12,14 +12,16 @@ $request = Services::request();
 ?>
 
 <!doctype html>
-<html lang="<?= $request->getLocale() ?>">
+<html lang="<?= current_language_code() ?>">
 
 <head>
     <meta charset="utf-8">
     <base href="<?= base_url() ?>">
     <title><?= esc($config['company']) . ' | ' . lang('Common.powered_by') . ' OSPOS ' . esc(config('App')->application_version) ?></title>
+    <meta name="robots" content="noindex, nofollow">
     <link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico">
-    <link rel="stylesheet" href="<?= 'resources/bootswatch/' . (empty($config['theme']) ? 'flatly' : esc($config['theme'])) . '/bootstrap.min.css' ?>">
+    <?php $theme = (empty($config['theme']) ? 'flatly' : esc($config['theme'])); ?>
+    <link rel="stylesheet" href="resources/bootswatch/<?= "$theme" ?>/bootstrap.min.css">
 
     <?php if (ENVIRONMENT == 'development' || get_cookie('debug') == 'true' || $request->getGet('debug') == 'true') : ?>
         <!-- inject:debug:css -->
@@ -38,10 +40,10 @@ $request = Services::request();
         <link rel="stylesheet" href="resources/css/bootstrap-4875cf7b0d.autocomplete.css">
         <link rel="stylesheet" href="resources/css/invoice-a99a4dfac3.css">
         <link rel="stylesheet" href="resources/css/ospos_print-bf10c1438b.css">
-        <link rel="stylesheet" href="resources/css/ospos-28f7f540a3.css">
+        <link rel="stylesheet" href="resources/css/ospos-d0b91fdf8f.css">
         <link rel="stylesheet" href="resources/css/popupbox-57d45cb822.css">
         <link rel="stylesheet" href="resources/css/receipt-0606f1c54e.css">
-        <link rel="stylesheet" href="resources/css/register-a6a6cc948d.css">
+        <link rel="stylesheet" href="resources/css/register-e88ac141ce.css">
         <link rel="stylesheet" href="resources/css/reports-ace7faf688.css">
         <!-- endinject -->
         <!-- inject:debug:js -->
@@ -63,26 +65,27 @@ $request = Services::request();
         <script src="resources/js/es6-promise-855125e6f5.js"></script>
         <script src="resources/js/FileSaver-e73b1946e8.js"></script>
         <script src="resources/js/html2canvas-e1d3a8d7cd.js"></script>
-        <script src="resources/js/jspdf-6eb90bf5a3.umd.js"></script>
-        <script src="resources/js/jspdf-4f52bd767f.plugin.autotable.js"></script>
-        <script src="resources/js/tableExport-0df60917ca.min.js"></script>
+        <script src="resources/js/jspdf-bbbebb610c.umd.js"></script>
+        <script src="resources/js/purify-a9908e8359.js"></script>
+        <script src="resources/js/jspdf-92d87e47e8.plugin.autotable.js"></script>
+        <script src="resources/js/xlsx-6b3130af1c.full.min.js"></script>
+        <script src="resources/js/tableExport-3d506dfa61.min.js"></script>
         <script src="resources/js/chartist-8a7ecb4445.js"></script>
         <script src="resources/js/chartist-plugin-pointlabels-0a1ab6aa4e.js"></script>
         <script src="resources/js/chartist-plugin-tooltip-116cb48831.js"></script>
         <script src="resources/js/chartist-plugin-axistitle-80a1198058.js"></script>
         <script src="resources/js/chartist-plugin-barlabels-4165273742.js"></script>
         <script src="resources/js/bootstrap-notify-376bc6eb87.js"></script>
-        <script src="resources/js/js-fa93e8894e.cookie.js"></script>
         <script src="resources/js/bootstrap-tagsinput-855a7c7670.js"></script>
         <script src="resources/js/bootstrap-toggle-1c7a19a049.js"></script>
         <script src="resources/js/clipboard-908af414ab.js"></script>
         <script src="resources/js/imgpreview-1db063409f.full.jquery.js"></script>
-        <script src="resources/js/manage_tables-9b98d5573a.js"></script>
-        <script src="resources/js/nominatim-89be77a11a.autocomplete.js"></script>
+        <script src="resources/js/manage_tables-9db1813775.js"></script>
+        <script src="resources/js/nominatim-d187095956.autocomplete.js"></script>
         <!-- endinject -->
     <?php else : ?>
         <!--inject:prod:css -->
-        <link rel="stylesheet" href="resources/opensourcepos-8e34d6a398.min.css">
+        <link rel="stylesheet" href="resources/opensourcepos-c3c51fd7e7.min.css">
         <!-- endinject -->
 
         <!-- Tweaks to the UI for a particular theme should drop here  -->
@@ -91,7 +94,7 @@ $request = Services::request();
         <?php } ?>
         <!-- inject:prod:js -->
         <script src="resources/jquery-2c872dbe60.min.js"></script>
-        <script src="resources/opensourcepos-39c74204a5.min.js"></script>
+        <script src="resources/opensourcepos-f26533fa83.min.js"></script>
         <!-- endinject -->
     <?php endif; ?>
 
